@@ -65,7 +65,8 @@ public sealed class FormPenceresi : FluentWindow
         Owner = Dialog.Sahip;
         ResizeMode = ResizeMode.CanResize;
         ExtendsContentIntoTitleBar = true;
-        WindowBackdropType = WindowBackdropType.Mica;
+        WindowBackdropType = WindowBackdropType.None;
+        SetResourceReference(BackgroundProperty, "Zemin");
         var ikiSutun = alanlar.Count(a => a.Tip != AlanTipi.Baslik) > 9;
         Width = genislik > 0 ? genislik : ikiSutun ? 900 : 520;
         SizeToContent = SizeToContent.Height;

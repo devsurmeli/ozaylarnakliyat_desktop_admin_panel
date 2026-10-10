@@ -58,11 +58,13 @@
             </StackPanel>
             <CheckBox Content="{Binding OnayFiltreMetni}" IsChecked="{Binding OnayFiltre}" Margin="0,0,12,0" VerticalAlignment="Center"
                       Visibility="{Binding OnayFiltreMetni, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
-            <ui:TextBox x:Name="AramaKutusu" PlaceholderText="Listede ara... (Ctrl+F)" Icon="{ui:SymbolIcon Search24}" Width="320"
+            <ui:TextBox x:Name="AramaKutusu" PlaceholderText="Listede ara... (Ctrl+F)" Icon="{ui:SymbolIcon Search24}" Width="340"
                         Text="{Binding Arama, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
         </WrapPanel>
 
-        <DataGrid x:Name="Tablo" Grid.Row="2" ItemsSource="{Binding Gorunum}" SelectedItem="{Binding SeciliNesne}"
+        <Border Grid.Row="2" Style="{StaticResource Kart}" Padding="6,4,6,6" Margin="0,2,0,0">
+        <Grid>
+        <DataGrid x:Name="Tablo" ItemsSource="{Binding Gorunum}" SelectedItem="{Binding SeciliNesne}"
                   AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserAddRows="False"
                   HeadersVisibility="Column" GridLinesVisibility="Horizontal" EnableRowVirtualization="True"
                   VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
@@ -70,18 +72,22 @@
             <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding Renk}" Value="kirmizi"><Setter Property="Foreground" Value="#C42B1C" /></DataTrigger>
-                        <DataTrigger Binding="{Binding Renk}" Value="turuncu"><Setter Property="Foreground" Value="#B35C00" /></DataTrigger>
-                        <DataTrigger Binding="{Binding Renk}" Value="yesil"><Setter Property="Foreground" Value="#107C10" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Renk}" Value="kirmizi"><Setter Property="Foreground" Value="{DynamicResource KirmiziMetin}" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Renk}" Value="turuncu"><Setter Property="Foreground" Value="{DynamicResource VurguKoyu}" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Renk}" Value="yesil"><Setter Property="Foreground" Value="{DynamicResource YesilMetin}" /></DataTrigger>
                         <DataTrigger Binding="{Binding Renk}" Value="gri"><Setter Property="Opacity" Value="0.55" /></DataTrigger>
                     </Style.Triggers>
                 </Style>
             </DataGrid.RowStyle>
         </DataGrid>
-
-        <ui:ProgressRing Grid.Row="2" IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <ui:ProgressRing IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center"
                          Visibility="{Binding Mesgul, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" />
+        </Grid>
+        </Border>
 
-        <TextBlock Grid.Row="3" Text="{Binding AltBilgi}" Margin="2,8,0,0" Opacity="0.85" TextWrapping="Wrap" />
+        <Border Grid.Row="3" HorizontalAlignment="Left" Margin="0,10,0,0" Padding="12,5" CornerRadius="10" Background="{DynamicResource VurguAcik}"
+                Visibility="{Binding AltBilgi, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}">
+            <TextBlock Text="{Binding AltBilgi}" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource VurguKoyu}" FontWeight="SemiBold" />
+        </Border>
     </Grid>
 </UserControl>

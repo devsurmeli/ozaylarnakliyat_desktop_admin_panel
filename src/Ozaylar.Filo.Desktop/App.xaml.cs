@@ -27,6 +27,7 @@ public partial class App : System.Windows.Application
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = tr;
         Thread.CurrentThread.CurrentCulture = Thread.CurrentThread.CurrentUICulture = tr;
         FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(tr.IetfLanguageTag)));
+        Tema.Yukle();
 
         Log.Logger = new LoggerConfiguration()
 #if DEBUG

@@ -30,7 +30,8 @@ public sealed class ListePenceresi : FluentWindow
         Owner = Dialog.Sahip;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ExtendsContentIntoTitleBar = true;
-        WindowBackdropType = WindowBackdropType.Mica;
+        WindowBackdropType = WindowBackdropType.None;
+        SetResourceReference(BackgroundProperty, "Zemin");
         var kok = new DockPanel();
         var tb = new TitleBar { Title = vm.Baslik };
         DockPanel.SetDock(tb, Dock.Top);
@@ -73,7 +74,8 @@ public sealed class EklerPenceresi : FluentWindow
         Owner = Dialog.Sahip;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ExtendsContentIntoTitleBar = true;
-        WindowBackdropType = WindowBackdropType.Mica;
+        WindowBackdropType = WindowBackdropType.None;
+        SetResourceReference(BackgroundProperty, "Zemin");
 
         _tablo = new System.Windows.Controls.DataGrid { ItemsSource = _liste, IsReadOnly = true, AutoGenerateColumns = false, HeadersVisibility = DataGridHeadersVisibility.Column };
         KolonOlusturucu.Uygula(_tablo,
@@ -232,7 +234,8 @@ public sealed class EkstrePenceresi : FluentWindow
         Owner = Dialog.Sahip;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ExtendsContentIntoTitleBar = true;
-        WindowBackdropType = WindowBackdropType.Mica;
+        WindowBackdropType = WindowBackdropType.None;
+        SetResourceReference(BackgroundProperty, "Zemin");
         var bugun = DateTime.Today;
         _bas.SelectedDate = new DateTime(bugun.Year, 1, 1);
         _bit.SelectedDate = bugun;

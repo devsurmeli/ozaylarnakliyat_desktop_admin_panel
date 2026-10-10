@@ -5,7 +5,7 @@
                  xmlns:s="clr-namespace:Ozaylar.Filo.Desktop.Sayfalar"
                  Title="Ozaylar Filo" Width="1400" Height="860" MinWidth="1000" MinHeight="600"
                  WindowStartupLocation="CenterScreen" WindowState="Maximized"
-                 ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica">
+                 ExtendsContentIntoTitleBar="True" WindowBackdropType="None" Background="{DynamicResource Zemin}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -19,7 +19,33 @@
         </ui:TitleBar>
 
         <ui:NavigationView x:Name="Menu" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
-                           OpenPaneLength="240" IsPaneToggleVisible="True" Padding="16,8,0,0">
+                           OpenPaneLength="252" IsPaneToggleVisible="True" Padding="18,6,0,0"
+                           Transition="FadeInWithSlide" TransitionDuration="220">
+            <ui:NavigationView.PaneHeader>
+                <StackPanel Orientation="Horizontal" Margin="12,0,0,16">
+                    <Border Width="42" Height="42" CornerRadius="13" Background="{DynamicResource MarkaGradyan}">
+                        <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.35" Color="#EA580C" /></Border.Effect>
+                        <ui:SymbolIcon Symbol="VehicleTruckProfile24" FontSize="23" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="OZAYLAR" FontWeight="Black" FontSize="17" />
+                        <TextBlock Text="Filo Yönetim Sistemi" FontSize="11" Foreground="{DynamicResource MetinIkincil}" />
+                    </StackPanel>
+                </StackPanel>
+            </ui:NavigationView.PaneHeader>
+            <ui:NavigationView.PaneFooter>
+                <Border Margin="10,6,10,10" Padding="10,8" CornerRadius="12" Background="{DynamicResource VurguAcik}">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource MarkaGradyan}">
+                            <TextBlock x:Name="BasHarf" Foreground="White" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="KullaniciAd" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis" MaxWidth="170" />
+                            <TextBlock Text="Oturum açık" FontSize="11" Foreground="{DynamicResource MetinIkincil}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </ui:NavigationView.PaneFooter>
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem Content="Panel" TargetPageType="{x:Type s:PanelSayfasi}" Icon="{ui:SymbolIcon Home24}" />
 
@@ -78,6 +104,7 @@
 
             <ui:NavigationView.FooterMenuItems>
                 <ui:NavigationViewItem x:Name="UyariOgesi" Content="Uyarılar" Icon="{ui:SymbolIcon Alert24}" Click="UyariOgesi_Click" />
+                <ui:NavigationViewItem x:Name="TemaOgesi" Content="Koyu tema" Icon="{ui:SymbolIcon WeatherMoon24}" Click="TemaOgesi_Click" />
                 <ui:NavigationViewItem Content="Ayarlar" TargetPageType="{x:Type s:AyarlarMerkeziSayfasi}" Icon="{ui:SymbolIcon Settings24}" />
             </ui:NavigationView.FooterMenuItems>
         </ui:NavigationView>

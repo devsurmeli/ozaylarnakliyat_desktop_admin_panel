@@ -104,3 +104,45 @@ public sealed class NullGorunurlukDonusturucu : IValueConverter
         (value is null or "") ^ (parameter as string == "ters") ? Visibility.Collapsed : Visibility.Visible;
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
 }
+
+/// <summary>KPI kart başlığından ikon seçer (kartlara tek tek ikon tanımlamaya gerek kalmaz).</summary>
+public sealed class KpiIkonDonusturucu : IValueConverter
+{
+    public static readonly KpiIkonDonusturucu Ornek = new();
+
+    private static readonly (string Anahtar, Wpf.Ui.Controls.SymbolRegular Ikon)[] Kurallar =
+    [
+        ("gecik", Wpf.Ui.Controls.SymbolRegular.Warning24), ("uyarı", Wpf.Ui.Controls.SymbolRegular.Alert24),
+        ("kredi", Wpf.Ui.Controls.SymbolRegular.BuildingBank24), ("anapara", Wpf.Ui.Controls.SymbolRegular.BuildingBank24),
+        ("faiz", Wpf.Ui.Controls.SymbolRegular.DataTrending24), ("taksit", Wpf.Ui.Controls.SymbolRegular.CalendarClock24),
+        ("gün", Wpf.Ui.Controls.SymbolRegular.CalendarLtr24), ("ödenecek", Wpf.Ui.Controls.SymbolRegular.CalendarClock24),
+        ("kasa", Wpf.Ui.Controls.SymbolRegular.Wallet24), ("bakiye", Wpf.Ui.Controls.SymbolRegular.Wallet24), ("para", Wpf.Ui.Controls.SymbolRegular.Money24),
+        ("gelir", Wpf.Ui.Controls.SymbolRegular.ArrowTrendingLines24), ("ciro", Wpf.Ui.Controls.SymbolRegular.ArrowTrendingLines24), ("navlun", Wpf.Ui.Controls.SymbolRegular.ArrowTrendingLines24),
+        ("gider", Wpf.Ui.Controls.SymbolRegular.ReceiptMoney24), ("kâr", Wpf.Ui.Controls.SymbolRegular.Trophy24),
+        ("alacak", Wpf.Ui.Controls.SymbolRegular.ArrowDownload24), ("borç", Wpf.Ui.Controls.SymbolRegular.ArrowUpload24), ("tahsil", Wpf.Ui.Controls.SymbolRegular.Timer24),
+        ("sefer", Wpf.Ui.Controls.SymbolRegular.VehicleTruckProfile24), ("km başı", Wpf.Ui.Controls.SymbolRegular.Gauge24), ("km", Wpf.Ui.Controls.SymbolRegular.Gauge24),
+        ("tüketim", Wpf.Ui.Controls.SymbolRegular.GasPump24), ("yakıt", Wpf.Ui.Controls.SymbolRegular.GasPump24), ("süre", Wpf.Ui.Controls.SymbolRegular.Clock24),
+        ("fatura", Wpf.Ui.Controls.SymbolRegular.DocumentText24), ("zimmet", Wpf.Ui.Controls.SymbolRegular.Key24), ("hakediş", Wpf.Ui.Controls.SymbolRegular.PersonMoney24),
+        ("avans", Wpf.Ui.Controls.SymbolRegular.MoneyHand24), ("onay", Wpf.Ui.Controls.SymbolRegular.TaskListSquareLtr24), ("şoför", Wpf.Ui.Controls.SymbolRegular.Person24),
+        ("limit", Wpf.Ui.Controls.SymbolRegular.ShieldCheckmark24), ("risk", Wpf.Ui.Controls.SymbolRegular.ShieldCheckmark24),
+    ];
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var baslik = (value as string ?? "").ToLower(Kultur.Tr);
+        foreach (var (anahtar, ikon) in Kurallar)
+            if (baslik.Contains(anahtar)) return ikon;
+        return Wpf.Ui.Controls.SymbolRegular.DataUsage24;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+/// <summary>Ad soyaddan baş harfler (kullanıcı rozeti).</summary>
+public sealed class BasHarfDonusturucu : IValueConverter
+{
+    public static readonly BasHarfDonusturucu Ornek = new();
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        string.Concat((value as string ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0], Kultur.Tr)));
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
+}

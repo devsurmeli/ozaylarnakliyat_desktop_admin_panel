@@ -7,71 +7,86 @@
     <Page.InputBindings>
         <KeyBinding Key="F5" Command="{Binding YenileKomut}" />
     </Page.InputBindings>
-    <Grid Margin="0,0,16,12">
+    <Grid Margin="0,4,20,14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Başlık şeridi -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="False">
-            <ui:Button x:Name="GeriBtn" DockPanel.Dock="Left" Icon="{ui:SymbolIcon ArrowLeft24}" Click="GeriBtn_Click" ToolTip="Geri (Alt+Sol)"
-                       Appearance="Transparent" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Baslik}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <Border x:Name="RozetKutu" CornerRadius="10" Padding="10,2" Margin="12,0,0,0" VerticalAlignment="Center"
-                            Visibility="{Binding Rozet, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Background" Value="#E5E5E5" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RozetRenk}" Value="kirmizi"><Setter Property="Background" Value="#FDE7E9" /></DataTrigger>
-                                    <DataTrigger Binding="{Binding RozetRenk}" Value="turuncu"><Setter Property="Background" Value="#FFF4CE" /></DataTrigger>
-                                    <DataTrigger Binding="{Binding RozetRenk}" Value="yesil"><Setter Property="Background" Value="#DFF6DD" /></DataTrigger>
-                                    <DataTrigger Binding="{Binding RozetRenk}" Value="mavi"><Setter Property="Background" Value="#DEECF9" /></DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <TextBlock Text="{Binding Rozet}" FontSize="12" FontWeight="SemiBold" Foreground="#323130" />
-                    </Border>
-                </StackPanel>
-                <TextBlock Text="{Binding AltBaslik}" Opacity="0.75" Margin="0,2,0,0" TextWrapping="Wrap"
-                           Visibility="{Binding AltBaslik, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
-            </StackPanel>
+        <!-- Turuncu başlık şeridi (hero) -->
+        <Border Grid.Row="0" CornerRadius="18" Background="{DynamicResource HeroGradyan}" ClipToBounds="True" Margin="0,0,0,16">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="26" ShadowDepth="6" Direction="270" Opacity="0.22" Color="#C2410C" />
+            </Border.Effect>
+            <Grid>
+                <!-- Dekoratif daireler -->
+                <Ellipse Width="260" Height="260" Fill="White" Opacity="0.07" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-120,-60,0" />
+                <Ellipse Width="170" Height="170" Fill="White" Opacity="0.06" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,180,-110" />
+                <Ellipse Width="90" Height="90" Fill="White" Opacity="0.05" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="320,0,0,-50" />
 
-            <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding YenileKomut}" ToolTip="Yenile (F5)" Margin="6,0,0,0" VerticalAlignment="Center" />
-            <ui:Button x:Name="YazdirBtn" DockPanel.Dock="Right" Content="Yazdır  ▾" Icon="{ui:SymbolIcon Print24}" Click="YazdirBtn_Click" Margin="6,0,0,0" VerticalAlignment="Center" />
-            <ui:Button x:Name="DigerBtn" DockPanel.Dock="Right" Content="Diğer  ▾" Icon="{ui:SymbolIcon MoreHorizontal24}" Click="DigerBtn_Click" Margin="6,0,0,0" VerticalAlignment="Center" />
-            <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding BirincilEylemler}" VerticalAlignment="Center">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <ui:Button Content="{Binding Metin}" Command="{Binding Komut}" Margin="6,0,0,0" Appearance="Primary">
-                            <ui:Button.Icon><ui:SymbolIcon Symbol="{Binding Ikon}" /></ui:Button.Icon>
-                        </ui:Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </DockPanel>
+                <DockPanel Margin="22,18,22,18" LastChildFill="False">
+                    <ui:Button x:Name="GeriBtn" DockPanel.Dock="Left" Icon="{ui:SymbolIcon ArrowLeft24}" Click="GeriBtn_Click" ToolTip="Geri (Alt+Sol)"
+                               Style="{StaticResource HeroIkincil}" VerticalAlignment="Center" Margin="0,0,14,0" Padding="9" />
+                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" MaxWidth="900">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Baslik}" FontSize="26" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Border CornerRadius="11" Padding="11,3" Margin="14,0,0,0" VerticalAlignment="Center"
+                                    Visibility="{Binding Rozet, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#33FFFFFF" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RozetRenk}" Value="kirmizi"><Setter Property="Background" Value="#DC2626" /></DataTrigger>
+                                            <DataTrigger Binding="{Binding RozetRenk}" Value="yesil"><Setter Property="Background" Value="#16A34A" /></DataTrigger>
+                                            <DataTrigger Binding="{Binding RozetRenk}" Value="mavi"><Setter Property="Background" Value="#0284C7" /></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding Rozet}" FontSize="12" FontWeight="SemiBold" Foreground="White" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding AltBaslik}" Foreground="White" Opacity="0.88" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="13"
+                                   Visibility="{Binding AltBaslik, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
+                    </StackPanel>
+
+                    <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding YenileKomut}" ToolTip="Yenile (F5)"
+                               Style="{StaticResource HeroIkincil}" Margin="8,0,0,0" Padding="9" VerticalAlignment="Center" />
+                    <ui:Button x:Name="YazdirBtn" DockPanel.Dock="Right" Content="Yazdır  ▾" Icon="{ui:SymbolIcon Print24}" Click="YazdirBtn_Click"
+                               Style="{StaticResource HeroIkincil}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    <ui:Button x:Name="DigerBtn" DockPanel.Dock="Right" Content="Diğer  ▾" Icon="{ui:SymbolIcon MoreHorizontal24}" Click="DigerBtn_Click"
+                               Style="{StaticResource HeroIkincil}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding BirincilEylemler}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ui:Button Content="{Binding Metin}" Command="{Binding Komut}" Margin="8,0,0,0" Style="{StaticResource HeroBirincil}">
+                                    <ui:Button.Icon><ui:SymbolIcon Symbol="{Binding Ikon}" /></ui:Button.Icon>
+                                </ui:Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Grid>
+        </Border>
 
         <!-- KPI kartları -->
-        <ItemsControl Grid.Row="1" ItemsSource="{Binding Kpiler}" ItemTemplate="{StaticResource KpiSablon}" Margin="0,0,0,10">
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding Kpiler}" ItemTemplate="{StaticResource KpiSablon}" Margin="0,0,0,6">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
         </ItemsControl>
 
         <!-- Sekmeler -->
-        <TabControl Grid.Row="2" ItemsSource="{Binding Sekmeler}" SelectedItem="{Binding SeciliSekme}">
+        <TabControl Grid.Row="2" ItemsSource="{Binding Sekmeler}" SelectedItem="{Binding SeciliSekme}" ItemContainerStyle="{StaticResource Sekme}"
+                    Background="Transparent" BorderThickness="0" Padding="0">
             <TabControl.ItemTemplate>
                 <DataTemplate><TextBlock Text="{Binding Baslik}" /></DataTemplate>
             </TabControl.ItemTemplate>
             <TabControl.ContentTemplate>
-                <DataTemplate><ContentControl Content="{Binding Gorunum}" Margin="0,10,0,0" /></DataTemplate>
+                <DataTemplate><ContentControl Content="{Binding Gorunum}" Margin="0,8,0,0" /></DataTemplate>
             </TabControl.ContentTemplate>
         </TabControl>
 

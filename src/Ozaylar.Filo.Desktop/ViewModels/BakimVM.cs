@@ -122,7 +122,7 @@ public static class KalemPenceresi
         var w = new FluentWindow
         {
             Title = "Parça / İşçilik", Width = 760, Height = 460, Owner = Dialog.Sahip, WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ExtendsContentIntoTitleBar = true, WindowBackdropType = WindowBackdropType.Mica,
+            ExtendsContentIntoTitleBar = true, WindowBackdropType = WindowBackdropType.None, Background = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("Zemin"),
         };
         var tamam = new Button { Content = "Devam", Appearance = ControlAppearance.Primary, Margin = new Thickness(0, 0, 8, 0) };
         tamam.Click += (_, _) => { tablo.CommitEdit(DataGridEditingUnit.Row, true); w.DialogResult = true; };

@@ -21,7 +21,7 @@ public partial class GirisPenceresi : FluentWindow
         Loaded += async (_, _) =>
         {
             if (string.IsNullOrEmpty(Kullanici.Text)) Kullanici.Focus(); else Sifre.Focus();
-            try { Firma.Text = await App.Al<AyarServisi>().OkuAsync("Firma.Unvan") ?? ""; } catch { /* bağlantı hatası girişte görünür */ }
+            try { if (await App.Al<AyarServisi>().OkuAsync("Firma.Unvan") is { Length: > 0 } firma) Firma.Text = firma; } catch { /* bağlantı hatası girişte görünür */ }
         };
     }
 

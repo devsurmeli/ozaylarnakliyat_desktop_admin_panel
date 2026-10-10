@@ -32,7 +32,7 @@ public static class SecimPenceresi
         var w = new FluentWindow
         {
             Title = baslik, Width = 980, Height = 560, Owner = Dialog.Sahip, WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ExtendsContentIntoTitleBar = true, WindowBackdropType = WindowBackdropType.Mica,
+            ExtendsContentIntoTitleBar = true, WindowBackdropType = WindowBackdropType.None, Background = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("Zemin"),
         };
         var tamam = new Button { Content = "Seçilenleri ekle", Appearance = ControlAppearance.Primary, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
         tamam.Click += (_, _) => w.DialogResult = true;
@@ -86,7 +86,7 @@ public static class DurakPenceresi
         var w = new FluentWindow
         {
             Title = baslik, Width = 900, Height = 460, Owner = Dialog.Sahip, WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ExtendsContentIntoTitleBar = true, WindowBackdropType = WindowBackdropType.Mica,
+            ExtendsContentIntoTitleBar = true, WindowBackdropType = WindowBackdropType.None, Background = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("Zemin"),
         };
         var kaydet = new Button { Content = "Kaydet", Appearance = ControlAppearance.Primary, Margin = new Thickness(0, 0, 8, 0), IsEnabled = duzenlenebilir };
         kaydet.Click += (_, _) => { tablo.CommitEdit(DataGridEditingUnit.Row, true); w.DialogResult = true; };

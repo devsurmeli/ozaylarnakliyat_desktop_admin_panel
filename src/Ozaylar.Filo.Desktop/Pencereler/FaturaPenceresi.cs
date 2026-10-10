@@ -37,7 +37,8 @@ public sealed class FaturaPenceresi : FluentWindow
         Owner = Dialog.Sahip;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ExtendsContentIntoTitleBar = true;
-        WindowBackdropType = WindowBackdropType.Mica;
+        WindowBackdropType = WindowBackdropType.None;
+        SetResourceReference(BackgroundProperty, "Zemin");
         DataContext = f;
 
         // ---- Başlık alanları ----

@@ -35,8 +35,15 @@ public sealed class PanelVM(PanelServisi servis, UyariServisi uyari, IKullaniciO
     {
         var o = _o = await servis.OzetAsync();
         _uyarilar = await uyari.ListeAsync();
-        Baslik = $"Merhaba {oturum.AdSoyad}";
-        AltBaslik = DateTime.Now.ToString("dd MMMM yyyy, dddd", Kultur.Tr);
+        var saat = DateTime.Now.Hour;
+        Baslik = $"{(saat < 12 ? "Günaydın" : saat < 18 ? "İyi günler" : "İyi akşamlar")}, {oturum.AdSoyad.Split(' ')[0]}";
+        AltBaslik = string.Join("  ·  ", new[]
+        {
+            DateTime.Now.ToString("dd MMMM yyyy, dddd", Kultur.Tr),
+            o.Yoldakiler.Count > 0 ? $"{o.Yoldakiler.Count} araç yolda" : "Yolda araç yok",
+            o.Kredi is { GecikenTaksit: > 0 } kg ? $"{kg.GecikenTaksit} gecikmiş taksit" : null,
+            o.FaturalanmamisSefer > 0 ? $"{o.FaturalanmamisSefer} faturalanmamış sefer" : null,
+        }.Where(x => x is not null));
         var kritik = _uyarilar.Count(u => u.Seviye == UyariSeviye.Kritik);
         (Rozet, RozetRenk) = kritik > 0 ? ($"{kritik} kritik uyarı", "kirmizi") : _uyarilar.Count > 0 ? ($"{_uyarilar.Count} uyarı", "turuncu") : ("Her şey yolunda", "yesil");
         UyarilarDegisti?.Invoke(kritik, _uyarilar.Count);
@@ -108,12 +115,13 @@ public sealed class PanelVM(PanelServisi servis, UyariServisi uyari, IKullaniciO
                 t.Select(x => x.Gelir), t.Select(x => x.Gider), t.Select(x => x.Kar)), 280));
         if (_o.Kredi is { AylikYuk.Count: > 0 } k)
             kartlar.Add(Grafik.Kart("Önümüzdeki 12 ay kredi taksitleri (TL)", Grafik.Yigilmis(k.AylikYuk.Select(a => a.Ay.ToString("MMM yy", Kultur.Tr)).ToList(),
-                ("Anapara", k.AylikYuk.Select(a => a.AnaparaTL), Grafik.Mavi), ("Faiz + vergi", k.AylikYuk.Select(a => a.FaizTL), Grafik.Turuncu)), 280));
+                ("Anapara", k.AylikYuk.Select(a => a.AnaparaTL), Grafik.Ana), ("Faiz + vergi", k.AylikYuk.Select(a => a.FaizTL), Grafik.Ikincil)), 280));
         if (_o.AracKarlari is { Count: > 0 } ak)
         {
             var sirali = ak.OrderByDescending(a => a.Kar).ToList();
             var secim = sirali.Count <= 10 ? sirali : [.. sirali.Take(5), .. sirali.TakeLast(5)];
-            kartlar.Add(Grafik.Kart("Bu ay araç kârı — en iyi / en kötü (TL)", Grafik.Sutun(secim.Select(a => a.Plaka).ToList(), ("Kâr", secim.Select(a => a.Kar), Grafik.Yesil)), 280));
+            kartlar.Add(Grafik.Kart("Bu ay araç kârı — en iyi / en kötü (TL)", Grafik.Yigilmis(secim.Select(a => a.Plaka).ToList(),
+                ("Kâr", secim.Select(a => Math.Max(0, a.Kar)), Grafik.Yesil), ("Zarar", secim.Select(a => Math.Min(0, a.Kar)), Grafik.Kirmizi)), 280));
         }
         if (_o.Kredi is { Bankalar.Count: > 0 } kb)
             kartlar.Add(Grafik.Kart("Kredi borcu — banka dağılımı", Grafik.Pasta(kb.Bankalar.Select(b => (b.Banka, b.KalanAnaparaTL))), 280));

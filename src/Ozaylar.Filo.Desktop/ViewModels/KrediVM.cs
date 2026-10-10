@@ -471,9 +471,9 @@ public sealed class KrediDetayVM : DetayVM
         var plan = _d.Plan.Where(p => p.Durum != TaksitDurum.PlanDegisti).OrderBy(p => p.Vade).ToList();
         var etiketler = plan.Select(p => p.Vade.ToString("MM.yy")).ToList();
         return Grafik.Izgara(1,
-            Grafik.Kart("Kalan anapara", Grafik.Cizgi(etiketler, ("Kalan anapara", plan.Select(p => p.KalanAnapara), Grafik.Mavi)), 260),
+            Grafik.Kart("Kalan anapara", Grafik.Cizgi(etiketler, ("Kalan anapara", plan.Select(p => p.KalanAnapara), Grafik.Ana)), 260),
             Grafik.Kart("Taksit dağılımı (anapara / faiz + vergi)", Grafik.Yigilmis(etiketler,
-                ("Anapara", plan.Select(p => p.Anapara), Grafik.Mavi), ("Faiz + vergi", plan.Select(p => p.Faiz + p.Bsmv + p.Kkdf), Grafik.Turuncu)), 260));
+                ("Anapara", plan.Select(p => p.Anapara), Grafik.Ana), ("Faiz + vergi", plan.Select(p => p.Faiz + p.Bsmv + p.Kkdf), Grafik.Ikincil)), 260));
     }
 }
 
@@ -518,7 +518,7 @@ public sealed class KrediOzetVM(KrediServisi servis, IKullaniciOturumu oturum) :
         ], async _ => await servis.ListeAsync()) { DetayIslem = k => KrediIslemleri.DetayAc(k.Id) }));
         Sekmeler.Add(new DetaySekme("Aylık Taksit Yükü", () => _o is null ? Grafik.Bos() : Grafik.Kart("Önümüzdeki 12 ay (TL)", Grafik.Yigilmis(
             _o.AylikYuk.Select(a => a.Ay.ToString("MMM yy", Kultur.Tr)).ToList(),
-            ("Anapara", _o.AylikYuk.Select(a => a.AnaparaTL), Grafik.Mavi), ("Faiz + vergi", _o.AylikYuk.Select(a => a.FaizTL), Grafik.Turuncu)), 380)));
+            ("Anapara", _o.AylikYuk.Select(a => a.AnaparaTL), Grafik.Ana), ("Faiz + vergi", _o.AylikYuk.Select(a => a.FaizTL), Grafik.Ikincil)), 380)));
         Sekmeler.Add(new DetaySekme("Banka Riski", () => _o is null ? Grafik.Bos() : Grafik.Izgara(2,
             Grafik.Kart("Kalan anapara (banka bazında)", Grafik.Pasta(_o.Bankalar.Select(b => (b.Banka, b.KalanAnaparaTL))), 320),
             Grafik.Kart("Döviz bazında risk", Grafik.Pasta(_o.Dovizler.Select(x => ($"{x.PB} ({x.Kalan:N0})", x.KalanTL))), 320))));

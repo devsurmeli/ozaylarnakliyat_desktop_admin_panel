@@ -9,43 +9,229 @@
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemesDictionary Theme="Light" />
                 <ui:ControlsDictionary />
+                <!-- Tema paleti: çalışma anında Tema.Uygula ile Acik/Koyu arasında değişir -->
+                <ResourceDictionary Source="pack://application:,,,/OzaylarFilo;component/Temalar/Acik.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- ======================================================== Kartlar -->
+            <DropShadowEffect x:Key="KartGolge" BlurRadius="22" ShadowDepth="3" Direction="270" Opacity="0.10" Color="#5A3A20" />
+
+            <Style x:Key="Kart" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource KartZemin}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource KartKenar}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Effect" Value="{StaticResource KartGolge}" />
+            </Style>
+
+            <DropShadowEffect x:Key="KartGolgeYuksek" BlurRadius="30" ShadowDepth="8" Direction="270" Opacity="0.18" Color="#C2410C" />
+            <Style x:Key="KpiKart" TargetType="Border" BasedOn="{StaticResource Kart}">
+                <Setter Property="RenderTransform"><Setter.Value><TranslateTransform /></Setter.Value></Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource Vurgu}" />
+                        <Setter Property="Effect" Value="{StaticResource KartGolgeYuksek}" />
+                        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="-3" /></Setter.Value></Setter>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
 
             <Style x:Key="KartBaslik" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="13" />
-                <Setter Property="Opacity" Value="0.75" />
+                <Setter Property="Foreground" Value="{DynamicResource MetinIkincil}" />
             </Style>
             <Style x:Key="KartDeger" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="22" />
-                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Margin" Value="0,4,0,0" />
             </Style>
-            <!-- Gösterge kartı (Kpi kaydı) -->
+            <Style x:Key="BolumBaslik" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Margin" Value="0,12,0,6" />
+            </Style>
+
+            <!-- Gösterge kartı (Kpi kaydı): ikon rozeti + başlık + büyük değer + alt bilgi / ilerleme -->
             <DataTemplate x:Key="KpiSablon">
-                <Border Width="200" MinHeight="80" Margin="0,0,10,10" Padding="14,10" CornerRadius="8" BorderThickness="1"
-                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
-                    <StackPanel>
-                        <TextBlock Text="{Binding Baslik}" FontSize="12" Opacity="0.75" TextTrimming="CharacterEllipsis" />
-                        <TextBlock x:Name="Deger" Text="{Binding Deger}" FontSize="19" FontWeight="SemiBold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
-                        <ProgressBar x:Name="Cubuk" Value="{Binding Ilerleme, Mode=OneWay}" Maximum="100" Height="4" Margin="0,6,0,0" Visibility="Collapsed" />
-                        <TextBlock Text="{Binding Alt}" FontSize="12" Opacity="0.7" Margin="0,4,0,0" TextWrapping="Wrap"
-                                   Visibility="{Binding Alt, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
-                    </StackPanel>
+                <Border Width="214" MinHeight="96" Margin="0,0,12,12" Padding="16,14" Style="{StaticResource KpiKart}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="Rozet" Width="40" Height="40" CornerRadius="12" VerticalAlignment="Top" Margin="0,2,12,0"
+                                Background="{DynamicResource IkonZemin}">
+                            <ui:SymbolIcon x:Name="Ikon" Symbol="{Binding Baslik, Converter={x:Static alt:KpiIkonDonusturucu.Ornek}}" FontSize="20"
+                                           Foreground="{DynamicResource VurguKoyu}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding Baslik}" FontSize="12" Foreground="{DynamicResource MetinIkincil}" TextTrimming="CharacterEllipsis" />
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Margin="0,3,0,0">
+                                <TextBlock x:Name="Deger" Text="{Binding Deger}" FontSize="20" FontWeight="Bold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource MetinBirincil}" /></Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Viewbox>
+                            <ProgressBar x:Name="Cubuk" Value="{Binding Ilerleme, Mode=OneWay}" Maximum="100" Height="5" Margin="0,7,0,0" Visibility="Collapsed" />
+                            <TextBlock Text="{Binding Alt}" FontSize="11.5" Foreground="{DynamicResource MetinIkincil}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Visibility="{Binding Alt, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
                 <DataTemplate.Triggers>
-                    <DataTrigger Binding="{Binding Renk}" Value="kirmizi"><Setter TargetName="Deger" Property="Foreground" Value="#C42B1C" /></DataTrigger>
-                    <DataTrigger Binding="{Binding Renk}" Value="turuncu"><Setter TargetName="Deger" Property="Foreground" Value="#B35C00" /></DataTrigger>
-                    <DataTrigger Binding="{Binding Renk}" Value="yesil"><Setter TargetName="Deger" Property="Foreground" Value="#107C10" /></DataTrigger>
+                    <DataTrigger Binding="{Binding Renk}" Value="kirmizi">
+                        <Setter TargetName="Deger" Property="Foreground" Value="{DynamicResource KirmiziMetin}" />
+                        <Setter TargetName="Rozet" Property="Background" Value="{DynamicResource KirmiziZemin}" />
+                        <Setter TargetName="Ikon" Property="Foreground" Value="{DynamicResource KirmiziMetin}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Renk}" Value="turuncu">
+                        <Setter TargetName="Deger" Property="Foreground" Value="{DynamicResource VurguKoyu}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Renk}" Value="yesil">
+                        <Setter TargetName="Deger" Property="Foreground" Value="{DynamicResource YesilMetin}" />
+                        <Setter TargetName="Rozet" Property="Background" Value="{DynamicResource YesilZemin}" />
+                        <Setter TargetName="Ikon" Property="Foreground" Value="{DynamicResource YesilMetin}" />
+                    </DataTrigger>
                     <DataTrigger Binding="{Binding Ilerleme, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" Value="Visible">
                         <Setter TargetName="Cubuk" Property="Visibility" Value="Visible" />
                     </DataTrigger>
                 </DataTemplate.Triggers>
             </DataTemplate>
 
-            <Style x:Key="BolumBaslik" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="16" />
+            <!-- ======================================================== Tablolar -->
+            <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="RowBackground" Value="Transparent" />
+                <Setter Property="AlternatingRowBackground" Value="Transparent" />
+                <Setter Property="GridLinesVisibility" Value="Horizontal" />
+                <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource TabloCizgi}" />
+                <Setter Property="HeadersVisibility" Value="Column" />
+                <Setter Property="MinRowHeight" Value="38" />
+                <Setter Property="CanUserResizeRows" Value="False" />
+            </Style>
+
+            <Style TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="{DynamicResource TabloBaslikZemin}" />
+                <Setter Property="Foreground" Value="{DynamicResource MetinIkincil}" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Margin" Value="0,12,0,6" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="10,0" />
+                <Setter Property="MinHeight" Value="40" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridColumnHeader">
+                            <Grid>
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource KartKenar}" BorderThickness="0,0,0,1"
+                                        Padding="{TemplateBinding Padding}">
+                                    <DockPanel>
+                                        <TextBlock x:Name="Sira" DockPanel.Dock="Right" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                                   Foreground="{DynamicResource Vurgu}" Visibility="Collapsed" />
+                                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                                    </DockPanel>
+                                </Border>
+                                <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Width="6" Cursor="SizeWE">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb"><Border Background="Transparent" /></ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="SortDirection" Value="Ascending">
+                                    <Setter TargetName="Sira" Property="Text" Value="▲" />
+                                    <Setter TargetName="Sira" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                                <Trigger Property="SortDirection" Value="Descending">
+                                    <Setter TargetName="Sira" Property="Text" Value="▼" />
+                                    <Setter TargetName="Sira" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource VurguKoyu}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="DataGridCell">
+                <Setter Property="Padding" Value="10,0" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                <Setter Property="Background" Value="Transparent" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource VurguAcik}" />
+                    </Trigger>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource VurguSecim}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- ======================================================== Sekmeler (detay sayfaları) -->
+            <Style x:Key="Sekme" TargetType="TabItem">
+                <Setter Property="Foreground" Value="{DynamicResource MetinIkincil}" />
+                <Setter Property="FontSize" Value="13.5" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabItem">
+                            <Grid Margin="0,0,4,0" Cursor="Hand">
+                                <Border x:Name="Zemin" CornerRadius="8" Margin="0,0,0,4" Background="Transparent" />
+                                <ContentPresenter ContentSource="Header" Margin="14,8,14,12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border x:Name="Cizgi" Height="3" CornerRadius="2" VerticalAlignment="Bottom" Margin="10,0" Background="{DynamicResource Vurgu}" Visibility="Hidden" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Zemin" Property="Background" Value="{DynamicResource VurguAcik}" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Cizgi" Property="Visibility" Value="Visible" />
+                                    <Setter Property="Foreground" Value="{DynamicResource VurguKoyu}" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ======================================================== Turuncu şerit (hero) üzerindeki düğmeler -->
+            <Style x:Key="HeroBirincil" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                <Setter Property="Background" Value="White" />
+                <Setter Property="Foreground" Value="#C2410C" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="MouseOverBackground" Value="#FFF3E8" />
+                <Setter Property="PressedBackground" Value="#FFE2C7" />
+                <Setter Property="PressedForeground" Value="#9A3412" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Padding" Value="14,7" />
+                <Setter Property="CornerRadius" Value="10" />
+            </Style>
+            <Style x:Key="HeroIkincil" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                <Setter Property="Background" Value="#26FFFFFF" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="BorderBrush" Value="#40FFFFFF" />
+                <Setter Property="MouseOverBackground" Value="#40FFFFFF" />
+                <Setter Property="MouseOverBorderBrush" Value="#66FFFFFF" />
+                <Setter Property="PressedBackground" Value="#55FFFFFF" />
+                <Setter Property="PressedForeground" Value="White" />
+                <Setter Property="Padding" Value="12,7" />
+                <Setter Property="CornerRadius" Value="10" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

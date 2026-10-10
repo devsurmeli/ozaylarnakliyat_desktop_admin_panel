@@ -15,12 +15,13 @@ public static class Grafik
 {
     public static readonly SKColor[] Palet =
     [
-        SKColor.Parse("#0F6CBD"), SKColor.Parse("#107C10"), SKColor.Parse("#C42B1C"), SKColor.Parse("#CA5010"),
-        SKColor.Parse("#8764B8"), SKColor.Parse("#038387"), SKColor.Parse("#986F0B"), SKColor.Parse("#5C2E91"),
-        SKColor.Parse("#4F6BED"), SKColor.Parse("#69797E"),
+        SKColor.Parse("#F97316"), SKColor.Parse("#475569"), SKColor.Parse("#F59E0B"), SKColor.Parse("#0EA5E9"),
+        SKColor.Parse("#16A34A"), SKColor.Parse("#E11D48"), SKColor.Parse("#8B5CF6"), SKColor.Parse("#14B8A6"),
+        SKColor.Parse("#A8A29E"), SKColor.Parse("#FB923C"),
     ];
 
-    public static readonly SKColor Mavi = Palet[0], Yesil = Palet[1], Kirmizi = Palet[2], Turuncu = Palet[3];
+    /// <summary>Ana seri (gelir, anapara) turuncu; ikincil (gider, faiz) arduvaz; kâr yeşil.</summary>
+    public static readonly SKColor Ana = Palet[0], Ikincil = Palet[1], Yesil = Palet[4], Kirmizi = Palet[5];
 
     private static bool _ayarlandi;
 
@@ -40,11 +41,15 @@ public static class Grafik
     {
         icerik.Height = yukseklik;
         var p = new StackPanel();
-        p.Children.Add(new TextBlock { Text = baslik, FontWeight = FontWeights.SemiBold, FontSize = 14, Margin = new Thickness(0, 0, 0, 6) });
+        var ust = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        var cizgi = new Border { Width = 4, Height = 16, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        cizgi.SetResourceReference(Border.BackgroundProperty, "HeroGradyan");
+        ust.Children.Add(cizgi);
+        ust.Children.Add(new TextBlock { Text = baslik, FontWeight = FontWeights.SemiBold, FontSize = 14.5, VerticalAlignment = VerticalAlignment.Center });
+        p.Children.Add(ust);
         p.Children.Add(icerik);
-        var b = new Border { Child = p, Padding = new Thickness(14, 10, 14, 10), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 10, 10) };
-        b.SetResourceReference(Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
-        b.SetResourceReference(Border.BorderBrushProperty, "CardStrokeColorDefaultBrush");
+        var b = new Border { Child = p, Padding = new Thickness(18, 14, 18, 12), Margin = new Thickness(0, 4, 14, 14), VerticalAlignment = VerticalAlignment.Top };
+        b.SetResourceReference(FrameworkElement.StyleProperty, "Kart");
         return b;
     }
 
@@ -56,8 +61,11 @@ public static class Grafik
         return new ScrollViewer { Content = g, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     }
 
-    private static Axis[] X(IReadOnlyList<string> etiketler) => [new Axis { Labels = etiketler.ToArray(), TextSize = 12, LabelsRotation = etiketler.Count > 14 ? 45 : 0 }];
-    private static Axis[] Y() => [new Axis { Labeler = Bicim, TextSize = 12, SeparatorsPaint = new SolidColorPaint(new SKColor(0, 0, 0, 25)) }];
+    private static Axis[] X(IReadOnlyList<string> etiketler) => [new Axis { Labels = etiketler.ToArray(), TextSize = 12, LabelsRotation = etiketler.Count > 14 ? 45 : 0, LabelsPaint = Etiket() }];
+    private static Axis[] Y() => [new Axis { Labeler = Bicim, TextSize = 12, LabelsPaint = Etiket(), SeparatorsPaint = new SolidColorPaint(new SKColor(128, 128, 128, 45)) }];
+
+    /// <summary>Açık ve koyu temada okunur nötr yazı rengi.</summary>
+    private static SolidColorPaint Etiket() => new(new SKColor(0x8A, 0x81, 0x7C));
 
     /// <summary>Gruplu sütun grafiği.</summary>
     public static CartesianChart Sutun(IReadOnlyList<string> etiketler, params (string Ad, IEnumerable<decimal> Degerler, SKColor? Renk)[] seriler) => new()
@@ -67,7 +75,7 @@ public static class Grafik
             Name = s.Ad, Values = s.Degerler.Select(d => (double)d).ToArray(),
             Fill = new SolidColorPaint(s.Renk ?? Palet[i % Palet.Length]), MaxBarWidth = 28,
         }).ToArray(),
-        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom,
+        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom, LegendTextPaint = Etiket(), Background = System.Windows.Media.Brushes.Transparent,
     };
 
     /// <summary>Yığılmış sütun (ör. taksitte anapara + faiz).</summary>
@@ -78,7 +86,7 @@ public static class Grafik
             Name = s.Ad, Values = s.Degerler.Select(d => (double)d).ToArray(),
             Fill = new SolidColorPaint(s.Renk ?? Palet[i % Palet.Length]), MaxBarWidth = 28,
         }).ToArray(),
-        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom,
+        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom, LegendTextPaint = Etiket(), Background = System.Windows.Media.Brushes.Transparent,
     };
 
     /// <summary>Çizgi grafiği (ör. kalan anapara eğrisi, kâr trendi).</summary>
@@ -94,7 +102,7 @@ public static class Grafik
                 GeometrySize = etiketler.Count > 24 ? 0 : 7, GeometryStroke = new SolidColorPaint(renk, 3), LineSmoothness = 0.3,
             };
         }).ToArray(),
-        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom,
+        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom, LegendTextPaint = Etiket(), Background = System.Windows.Media.Brushes.Transparent,
     };
 
     /// <summary>Gelir/gider sütunları + kâr çizgisi.</summary>
@@ -102,15 +110,15 @@ public static class Grafik
     {
         Series =
         [
-            new ColumnSeries<double> { Name = "Gelir", Values = gelir.Select(d => (double)d).ToArray(), Fill = new SolidColorPaint(Mavi), MaxBarWidth = 22 },
-            new ColumnSeries<double> { Name = "Gider", Values = gider.Select(d => (double)d).ToArray(), Fill = new SolidColorPaint(Turuncu), MaxBarWidth = 22 },
+            new ColumnSeries<double> { Name = "Gelir", Values = gelir.Select(d => (double)d).ToArray(), Fill = new SolidColorPaint(Ana), MaxBarWidth = 22 },
+            new ColumnSeries<double> { Name = "Gider", Values = gider.Select(d => (double)d).ToArray(), Fill = new SolidColorPaint(Ikincil), MaxBarWidth = 22 },
             new LineSeries<double>
             {
                 Name = "Kâr", Values = kar.Select(d => (double)d).ToArray(), Stroke = new SolidColorPaint(Yesil, 3), Fill = null,
                 GeometrySize = 8, GeometryStroke = new SolidColorPaint(Yesil, 3), LineSmoothness = 0.2,
             },
         ],
-        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom,
+        XAxes = X(etiketler), YAxes = Y(), LegendPosition = LegendPosition.Bottom, LegendTextPaint = Etiket(), Background = System.Windows.Media.Brushes.Transparent,
     };
 
     /// <summary>Pasta / halka grafiği.</summary>
@@ -121,7 +129,7 @@ public static class Grafik
             Name = d.Ad, Values = [(double)d.Deger], Fill = new SolidColorPaint(Palet[i % Palet.Length]),
             InnerRadius = halka ? 60 : 0,
         }).ToArray(),
-        LegendPosition = LegendPosition.Right,
+        LegendPosition = LegendPosition.Right, LegendTextPaint = Etiket(), Background = System.Windows.Media.Brushes.Transparent,
     };
 
     /// <summary>Veri yoksa gösterilecek bilgi.</summary>

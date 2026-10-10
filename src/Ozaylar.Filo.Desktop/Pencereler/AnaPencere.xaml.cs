@@ -28,6 +28,10 @@ public partial class AnaPencere : FluentWindow
         YetkiyeGoreGizle(Menu.MenuItems, oturum);
         YetkiyeGoreGizle(Menu.FooterMenuItems, oturum);
         panel.UyarilarDegisti += UyariRozeti;
+        KullaniciAd.Text = oturum.AdSoyad;
+        BasHarf.Text = (string)BasHarfDonusturucu.Ornek.Convert(oturum.AdSoyad, typeof(string), null, Kultur.Tr);
+        TemaOgesiGuncelle();
+        Tema.Degisti += TemaOgesiGuncelle;
 
         // Geri: Alt+Sol veya fare geri tuşu
         PreviewKeyDown += (_, e) =>
@@ -47,6 +51,14 @@ public partial class AnaPencere : FluentWindow
         var ikon = new SymbolIcon(toplam == 0 ? SymbolRegular.Alert24 : SymbolRegular.AlertUrgent24);
         if (kritik > 0) ikon.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC4, 0x2B, 0x1C));
         UyariOgesi.Icon = ikon;
+    }
+
+    private void TemaOgesi_Click(object sender, RoutedEventArgs e) => Tema.Degistir();
+
+    private void TemaOgesiGuncelle()
+    {
+        TemaOgesi.Content = Tema.Koyu ? "Açık tema" : "Koyu tema";
+        TemaOgesi.Icon = new SymbolIcon(Tema.Koyu ? SymbolRegular.WeatherSunny24 : SymbolRegular.WeatherMoon24);
     }
 
     private void UyariOgesi_Click(object sender, RoutedEventArgs e)

@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="Sunucu Bağlantısı" Width="520" SizeToContent="Height" ResizeMode="NoResize"
-                 WindowStartupLocation="CenterScreen" ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica">
+                 WindowStartupLocation="CenterScreen" ExtendsContentIntoTitleBar="True" WindowBackdropType="None" Background="{DynamicResource Zemin}">
     <StackPanel>
         <ui:TitleBar Title="Ozaylar Filo — Sunucu Bağlantısı" ShowMaximize="False" ShowMinimize="False" />
         <StackPanel Margin="24,8,24,24">

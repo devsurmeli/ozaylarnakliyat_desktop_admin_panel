@@ -401,7 +401,7 @@ public sealed class CariDetayVM : DetayVM
             { Tarihli = true, DetayIslem = s => Detay.Sefer(s.Id) }.Aralik(DateTime.Today.AddMonths(-3), DateTime.Today.AddDays(30))));
         Sekmeler.Add(new DetaySekme("Yaşlandırma", () => _o is null ? Grafik.Bos() : Grafik.Kart("Açık bakiyenin vadeye göre dağılımı (TL)", Grafik.Sutun(
             ["Vadesi gelmemiş", "0–30 gün", "31–60 gün", "61–90 gün", "90+ gün"],
-            ("Tutar", new[] { _o.Yaslandirma.VadesiGelmemis, _o.Yaslandirma.Gun0_30, _o.Yaslandirma.Gun31_60, _o.Yaslandirma.Gun61_90, _o.Yaslandirma.Gun90Ustu }, Grafik.Turuncu)), 320)));
+            ("Tutar", new[] { _o.Yaslandirma.VadesiGelmemis, _o.Yaslandirma.Gun0_30, _o.Yaslandirma.Gun31_60, _o.Yaslandirma.Gun61_90, _o.Yaslandirma.Gun90Ustu }, Grafik.Ikincil)), 320)));
     }
 
     public override IReadOnlyList<Eylem> Eylemler =>
@@ -565,7 +565,7 @@ public sealed class SeferDetayVM : DetayVM
         if (k.Giderler.Count == 0) return Grafik.Bos("Bu sefere gider kaydı yok.");
         return Grafik.Izgara(2,
             Grafik.Kart("Gider dağılımı (TL)", Grafik.Pasta(k.Giderler.Select(g => (g.Kalem, g.TutarTL))), 300),
-            Grafik.Kart("Gelir / gider / kâr (TL)", Grafik.Sutun(["Navlun", "Gider", "Kâr"], ("Tutar", new[] { k.GelirTL, k.GiderTL, k.KarTL }, Grafik.Mavi)), 300));
+            Grafik.Kart("Gelir / gider / kâr (TL)", Grafik.Sutun(["Navlun", "Gider", "Kâr"], ("Tutar", new[] { k.GelirTL, k.GiderTL, k.KarTL }, Grafik.Ana)), 300));
     }
 }
 
