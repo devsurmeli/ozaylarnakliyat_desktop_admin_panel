@@ -231,13 +231,19 @@ public static class KrediIslemleri
         var d = await Servis.DetayAsync(krediId);
         var dlg = new OpenFileDialog { Filter = "Excel / CSV|*.xlsx;*.xls;*.csv", Title = "Banka ödeme planı dosyası" };
         if (dlg.ShowDialog() != true) return false;
-        var satirNo = await Dialog.MetinIste("Başlık satırı numarası (Vade, Anapara, Faiz... yazan satır):", "Banka planı", "1");
-        if (satirNo is null || !int.TryParse(satirNo, out var baslik) || baslik < 1) return false;
-        List<KrediTaksit> plan;
-        await using (var fs = File.OpenRead(dlg.FileName))
+        var icerik = await File.ReadAllBytesAsync(dlg.FileName);
+        List<KrediTaksit>? Dene(int baslik)
         {
-            var satirlar = App.Al<IExcelOkuyucu>().Oku(fs, dlg.FileName, baslik);
-            plan = KrediServisi.BankaPlaniAyristir(satirlar, d.Ozet.KalanAnapara);
+            try { return KrediServisi.BankaPlaniAyristir(App.Al<IExcelOkuyucu>().Oku(new MemoryStream(icerik), dlg.FileName, baslik), d.Ozet.KalanAnapara); }
+            catch (Exception ex) when (ex is DomainException or InvalidOperationException or ArgumentException or KeyNotFoundException) { return null; }
+        }
+        // Banka dosyalarında üstte logo/müşteri bilgisi olur: başlık satırı ilk 25 satırda otomatik aranır.
+        var plan = Enumerable.Range(1, 25).Select(Dene).FirstOrDefault(p => p is { Count: > 0 });
+        if (plan is null)
+        {
+            var satirNo = await Dialog.MetinIste("Başlık satırı otomatik bulunamadı. Vade / Anapara / Faiz yazan satırın numarası:", "Banka planı", "1");
+            if (satirNo is null || !int.TryParse(satirNo, out var baslik) || baslik < 1) return false;
+            plan = KrediServisi.BankaPlaniAyristir(App.Al<IExcelOkuyucu>().Oku(new MemoryStream(icerik), dlg.FileName, baslik), d.Ozet.KalanAnapara);
         }
         var pb = d.Kredi.ParaBirimi.Ad();
         var ozet = $"{plan.Count} taksit okundu ({plan[0].VadeTarihi:dd.MM.yyyy} – {plan[^1].VadeTarihi:dd.MM.yyyy})\n\n" +
@@ -249,6 +255,45 @@ public static class KrediIslemleri
         await Servis.PlanDegistirAsync(krediId, plan);
         AnaPencere.Basarili("Banka ödeme planı alındı.");
         return true;
+    }
+
+    /// <summary>Mevcut açık planı Excel şablonu olarak verir: bankanın rakamlarıyla düzeltilip "Planı Excel'den Al" ile geri yüklenebilir.</summary>
+    public static async Task SablonAsync(short krediId)
+    {
+        var d = await Servis.DetayAsync(krediId);
+        var acik = d.Plan.Where(p => p.Versiyon == d.Kredi.AktifVersiyon && p.Durum is TaksitDurum.Bekliyor or TaksitDurum.Kismi).ToList();
+        var tablo = KolonOlusturucu.Tablo($"Banka Plani {d.Kredi.KrediNo}",
+        [
+            Kolon.Sayi("Taksit No", nameof(PlanSatir.No)), Kolon.Tarih("Vade Tarihi", nameof(PlanSatir.Vade)), Kolon.Para("Anapara", nameof(PlanSatir.Anapara), false),
+            Kolon.Para("Faiz", nameof(PlanSatir.Faiz), false), Kolon.Para("BSMV", nameof(PlanSatir.Bsmv), false), Kolon.Para("KKDF", nameof(PlanSatir.Kkdf), false),
+            Kolon.Para("Taksit Tutarı", nameof(PlanSatir.Toplam), false), Kolon.Para("Kalan Anapara", nameof(PlanSatir.KalanAnapara), false),
+        ], acik, "Açık taksitler. Bankanın planına göre düzeltip 'Planı Excel'den Al' ile yükleyin.");
+        var kaydet = new SaveFileDialog { FileName = $"Banka plani {d.Kredi.KrediNo}.xlsx", Filter = "Excel (*.xlsx)|*.xlsx" };
+        if (kaydet.ShowDialog() != true) return;
+        await File.WriteAllBytesAsync(kaydet.FileName, App.Al<IDisaAktarici>().Excel(tablo));
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(kaydet.FileName) { UseShellExecute = true });
+    }
+
+    private sealed class FaizModel
+    {
+        public decimal Oran { get; set; }
+        public FaizTipi Tip { get; set; }
+    }
+
+    /// <summary>Değişken faiz: yeni oranla kalan taksitler yeniden planlanır.</summary>
+    public static async Task<bool> FaizDegistirAsync(short krediId)
+    {
+        var d = await Servis.DetayAsync(krediId);
+        var m = new FaizModel { Oran = d.Kredi.FaizOrani, Tip = d.Kredi.FaizTipi };
+        var alanlar = new List<FormAlani>
+        {
+            new() { Etiket = "Yeni faiz oranı %", Yol = nameof(FaizModel.Oran), Tip = AlanTipi.Ondalik, Zorunlu = true,
+                    Ipucu = $"Şu anki oran %{d.Kredi.FaizOrani:0.##}; kalan anapara {d.Ozet.KalanAnapara:N2} kalan vadede yeniden taksitlendirilir" },
+            FormAlani.EnumSecim<FaizTipi>("Faiz tipi", nameof(FaizModel.Tip)),
+        };
+        var ok = FormPenceresi.Ac($"Faiz Oranı Değiştir — {d.Banka} {d.Kredi.KrediNo}", m, alanlar, _ => Servis.FaizDegistirAsync(krediId, m.Oran, m.Tip));
+        if (ok) AnaPencere.Basarili("Faiz oranı değişti; kalan taksitler yeniden planlandı.");
+        return ok;
     }
 
     public static async Task YazdirAsync(short krediId)
@@ -299,6 +344,7 @@ public sealed class KrediListeVM(IDisaAktarici d, KrediServisi servis, IKullanic
         E("Erken Kapat", SymbolRegular.LockClosed24, async () => { if (Secili is { } k && await KrediIslemleri.ErkenKapatAsync(k.Id)) await YenileAsync(); }),
         E("Serbest Ödeme (rotatif / kart)", SymbolRegular.Money24, async () => { if (Secili is { } k && await KrediIslemleri.SerbestOdemeAsync(k.Id)) await YenileAsync(); }),
         E("Planı Excel'den Al", SymbolRegular.DocumentTable24, async () => { if (Secili is { } k && await KrediIslemleri.PlanExceldenAsync(k.Id)) await YenileAsync(); }),
+        E("Faiz Oranı Değiştir", SymbolRegular.DataTrending24, async () => { if (Secili is { } k && await KrediIslemleri.FaizDegistirAsync(k.Id)) await YenileAsync(); }),
         E("Ödeme Planı Yazdır", SymbolRegular.Print24, () => Secili is { } k ? KrediIslemleri.YazdirAsync(k.Id) : Task.CompletedTask),
         E("Ekler", SymbolRegular.Attach24, () => Secili is { } k ? EklerPenceresi.AcAsync(EkHedef.Finansman, k.Id, $"{k.Banka} {k.KrediNo}") : Task.CompletedTask),
         E("Banka Limitleri", SymbolRegular.BuildingBank24, () => { BankaLimitListeVM.Ac(); return Task.CompletedTask; }),
@@ -429,6 +475,8 @@ public sealed class KrediDetayVM : DetayVM
         Eylem.Yap("Erken Kapat", SymbolRegular.LockClosed24, async () => { if (await KrediIslemleri.ErkenKapatAsync(_id)) await YenileAsync(); }),
         Eylem.Yap("Serbest Ödeme", SymbolRegular.Money24, async () => { if (await KrediIslemleri.SerbestOdemeAsync(_id)) await YenileAsync(); }),
         Eylem.Yap("Planı Excel'den Al", SymbolRegular.DocumentTable24, async () => { if (await KrediIslemleri.PlanExceldenAsync(_id)) await YenileAsync(); }),
+        Eylem.Yap("Plan Şablonu (Excel)", SymbolRegular.ArrowExportLtr24, () => KrediIslemleri.SablonAsync(_id)),
+        Eylem.Yap("Faiz Oranı Değiştir", SymbolRegular.DataTrending24, async () => { if (await KrediIslemleri.FaizDegistirAsync(_id)) await YenileAsync(); }),
         Eylem.Yap("Düzenle", SymbolRegular.Edit24, async () => { if (await KrediIslemleri.FormAsync(_id) is not null) await YenileAsync(); }),
         Eylem.Yap("Ekler", SymbolRegular.Attach24, () => EklerPenceresi.AcAsync(EkHedef.Finansman, _id, Baslik)),
         Eylem.Yap("Sil", SymbolRegular.Delete24, async () => { if (await KrediIslemleri.SilAsync(_id, Baslik)) Gezgin.Geri(); }),
@@ -460,9 +508,22 @@ public sealed class KrediDetayVM : DetayVM
         Kpiler.Add(new Kpi("Kalan faiz + vergi", Para(o.KalanFaiz, pb), "Plana göre"));
         Kpiler.Add(new Kpi("Sonraki taksit", o.SonrakiTutar is { } st ? Para(st, pb) : "—",
             o.SonrakiVade is { } sv ? $"{sv:dd.MM.yyyy} ({sv.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber} gün)" : null,
-            o.SonrakiVade is { } sv2 && sv2.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber <= 7 ? "turuncu" : null));
+            o.SonrakiVade is { } sv2 && sv2.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber <= 7 ? "turuncu" : null, Tikla: o.SonrakiTutar is null ? null : TaksitOdeTikla));
         Kpiler.Add(new Kpi("Taksit", $"{o.OdenenTaksit} / {o.ToplamTaksit}", "ödendi"));
-        if (o.Geciken > 0) Kpiler.Add(new Kpi("Gecikmiş", Para(o.GecikenTutar, pb), $"{o.Geciken} taksit", "kirmizi"));
+        if (o.Geciken > 0) Kpiler.Add(new Kpi("Gecikmiş", Para(o.GecikenTutar, pb), $"{o.Geciken} taksit", "kirmizi", Tikla: TaksitOdeTikla));
+    }
+
+    /// <summary>KPI kartından taksit ödeme formu.</summary>
+    private async void TaksitOdeTikla()
+    {
+        try
+        {
+            if (await KrediIslemleri.TaksitOdeAsync(_id)) await YenileAsync();
+        }
+        catch (Exception ex)
+        {
+            await Dialog.HataGoster(ex);
+        }
     }
 
     private object GrafikOlustur()
@@ -501,12 +562,12 @@ public sealed class KrediOzetVM(KrediServisi servis, IKullaniciOturumu oturum) :
         Rozet = o.GecikenTaksit > 0 ? $"{o.GecikenTaksit} gecikmiş taksit" : null;
         RozetRenk = "kirmizi";
         Kpiler.Clear();
-        Kpiler.Add(new Kpi("Toplam kalan anapara", Para0(o.KalanAnaparaTL), $"{o.Bankalar.Sum(b => b.KrediSayisi)} aktif kredi"));
-        Kpiler.Add(new Kpi("Bu ay ödenecek", Para0(o.BuAyOdenecekTL), Renk: "turuncu"));
-        Kpiler.Add(new Kpi("0–30 gün", Para0(o.Gun30TL)));
-        Kpiler.Add(new Kpi("31–60 gün", Para0(o.Gun60TL)));
-        Kpiler.Add(new Kpi("61–90 gün", Para0(o.Gun90TL)));
-        Kpiler.Add(new Kpi("Gecikmiş", Para0(o.GecikenTutarTL), $"{o.GecikenTaksit} taksit", o.GecikenTaksit > 0 ? "kirmizi" : "yesil"));
+        Kpiler.Add(new Kpi("Toplam kalan anapara", Para0(o.KalanAnaparaTL), $"{o.Bankalar.Sum(b => b.KrediSayisi)} aktif kredi", Tikla: () => Gezgin.Git(typeof(Sayfalar.KredilerSayfasi))));
+        Kpiler.Add(new Kpi("Bu ay ödenecek", Para0(o.BuAyOdenecekTL), Renk: "turuncu", Tikla: () => Gezgin.Git(typeof(Sayfalar.TaksitlerSayfasi))));
+        Kpiler.Add(new Kpi("0–30 gün", Para0(o.Gun30TL), Tikla: () => Gezgin.Git(typeof(Sayfalar.TaksitlerSayfasi))));
+        Kpiler.Add(new Kpi("31–60 gün", Para0(o.Gun60TL), Tikla: () => Gezgin.Git(typeof(Sayfalar.TaksitlerSayfasi))));
+        Kpiler.Add(new Kpi("61–90 gün", Para0(o.Gun90TL), Tikla: () => Gezgin.Git(typeof(Sayfalar.TaksitlerSayfasi))));
+        Kpiler.Add(new Kpi("Gecikmiş", Para0(o.GecikenTutarTL), $"{o.GecikenTaksit} taksit", o.GecikenTaksit > 0 ? "kirmizi" : "yesil", Tikla: () => Gezgin.Git(typeof(Sayfalar.TaksitlerSayfasi))));
         if (_sekmeler) return;
         _sekmeler = true;
         Sekmeler.Add(DetaySekme.Liste("Krediler", () => new SekmeListeVM<KrediSatir>("Krediler",

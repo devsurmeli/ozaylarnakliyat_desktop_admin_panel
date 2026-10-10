@@ -55,11 +55,22 @@ public sealed class FormPenceresi : FluentWindow
 
     public object Model { get; }
 
-    public FormPenceresi(string baslik, object model, IReadOnlyList<FormAlani> alanlar, Func<bool, Task> kaydet, bool salt = false, double genislik = 0)
+    /// <summary>Son kapanan formda "Kaydet ve yeni" seçildiyse true (çağıran yeni boş form açar).</summary>
+    public static bool SonYeniIstendi { get; private set; }
+
+    private readonly bool _yeni;
+    private readonly string _baslik;
+    private bool _yeniIstendi;
+
+    public FormPenceresi(string baslik, object model, IReadOnlyList<FormAlani> alanlar, Func<bool, Task> kaydet, bool salt = false, double genislik = 0, bool yeni = false)
     {
+        SonYeniIstendi = false;
+        _yeni = yeni && !salt;
+        _baslik = baslik;
         Model = model;
         _kaydet = kaydet;
         Title = baslik;
+        if (_yeni) HatirlananlariUygula(alanlar);
         DataContext = model;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Owner = Dialog.Sahip;
@@ -109,6 +120,17 @@ public sealed class FormPenceresi : FluentWindow
         var iptal = new Button { Content = salt ? "Kapat" : "Vazgeç", MinWidth = 110, IsCancel = true, Margin = new Thickness(8, 0, 0, 0) };
         iptal.Click += (_, _) => DialogResult = false;
         var butonlar = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(16, 8, 16, 16) };
+        if (_yeni)
+        {
+            // Art arda kayıt (masraf, yakıt, avans...): kaydeder ve aynı formu boş açar; seçimler hatırlanır.
+            var yeniBtn = new Button { Content = "Kaydet ve yeni", MinWidth = 130, Margin = new Thickness(0, 0, 8, 0), Icon = new SymbolIcon(SymbolRegular.AddCircle24), ToolTip = "Ctrl+Shift+S" };
+            yeniBtn.Click += async (_, _) => { _yeniIstendi = true; await KaydetAsync(); };
+            butonlar.Children.Add(yeniBtn);
+            PreviewKeyDown += async (_, e) =>
+            {
+                if (e.Key == Key.S && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift)) { e.Handled = true; _yeniIstendi = true; await KaydetAsync(); }
+            };
+        }
         if (!salt) butonlar.Children.Add(_kaydetBtn);
         butonlar.Children.Add(iptal);
 
@@ -130,6 +152,26 @@ public sealed class FormPenceresi : FluentWindow
         GorunurlukGuncelle();
         Loaded += (_, _) => IlkAlanaOdaklan();
         if (!salt) PreviewKeyDown += KlavyeAsync;
+    }
+
+    /// <summary>Boş seçim alanlarına bu formda son kullanılan değeri yazar (seçeneklerde hâlâ varsa).</summary>
+    private void HatirlananlariUygula(IReadOnlyList<FormAlani> alanlar)
+    {
+        foreach (var a in alanlar.Where(a => a.Tip == AlanTipi.Secim && !a.SaltOkunur))
+        {
+            if (SonDegerler.Oku(_baslik, a.Yol) is not { } deger) continue;
+            Erisim p;
+            try { p = Ozellik(a.Yol); }
+            catch (InvalidOperationException) { continue; }
+            var mevcut = p.Al();
+            var bos = mevcut is null || (mevcut is IConvertible c && !(mevcut is Enum) && c.ToInt64(Kultur.Tr) == 0);
+            if (!bos) continue;
+            var secenekVar = a.Secenekler?.Cast<object>().Any(o =>
+                (o.GetType().GetProperty("Id") ?? o.GetType().GetProperty("Deger"))?.GetValue(o) is { } v && Convert.ToInt64(v) == deger) == true;
+            if (!secenekVar) continue;
+            var hedef = Nullable.GetUnderlyingType(p.Tip) ?? p.Tip;
+            p.Ver(hedef.IsEnum ? Enum.ToObject(hedef, deger) : Convert.ChangeType(deger, hedef, Kultur.Tr));
+        }
     }
 
     private void IlkAlanaOdaklan()
@@ -243,8 +285,9 @@ public sealed class FormPenceresi : FluentWindow
     }
 
     /// <summary>Formu modal açar; kaydedilirse true.</summary>
-    public static bool Ac(string baslik, object model, IReadOnlyList<FormAlani> alanlar, Func<bool, Task> kaydet, double genislik = 0) =>
-        new FormPenceresi(baslik, model, alanlar, kaydet, genislik: genislik).ShowDialog() == true;
+    /// <param name="yeni">Yeni kayıt formu: "Kaydet ve yeni" düğmesi görünür, son seçimler (kasa, araç, tür...) hatırlanır.</param>
+    public static bool Ac(string baslik, object model, IReadOnlyList<FormAlani> alanlar, Func<bool, Task> kaydet, double genislik = 0, bool yeni = false) =>
+        new FormPenceresi(baslik, model, alanlar, kaydet, genislik: genislik, yeni: yeni).ShowDialog() == true;
 
     /// <summary>Model kodda değiştirildiğinde kontrolleri yeniler.</summary>
     public void Yenile()
@@ -546,7 +589,13 @@ public sealed class FormPenceresi : FluentWindow
         try
         {
             var ok = await Dialog.Calistir(onay => _kaydet(onay));
-            if (ok) DialogResult = true;
+            if (ok)
+            {
+                if (_yeni) SonDegerler.Kaydet(_baslik, _alanlar.Where(x => x.Alan.Tip == AlanTipi.Secim).Select(x => (x.Alan.Yol, Ozellik(x.Alan.Yol).Al())));
+                SonYeniIstendi = _yeniIstendi;
+                DialogResult = true;
+            }
+            else _yeniIstendi = false;
         }
         finally
         {
@@ -576,5 +625,46 @@ public sealed class FormPenceresi : FluentWindow
         _hata.Message = mesaj;
         _hata.IsOpen = true;
         _hata.Visibility = Visibility.Visible;
+    }
+}
+
+/// <summary>
+/// Yeni kayıt formlarında son seçilen değerler (kasa, araç, şoför, masraf türü...) — kullanıcı başına
+/// %LocalAppData%\OzaylarFilo\son-degerler.json dosyasında tutulur.
+/// </summary>
+public static class SonDegerler
+{
+    private static readonly string Dosya = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OzaylarFilo", "son-degerler.json");
+    private static Dictionary<string, long>? _degerler;
+
+    private static Dictionary<string, long> Degerler
+    {
+        get
+        {
+            if (_degerler is not null) return _degerler;
+            try
+            {
+                _degerler = System.IO.File.Exists(Dosya)
+                    ? System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, long>>(System.IO.File.ReadAllText(Dosya)) ?? []
+                    : [];
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or System.Text.Json.JsonException) { _degerler = []; }
+            return _degerler;
+        }
+    }
+
+    public static long? Oku(string form, string alan) => Degerler.TryGetValue($"{form}|{alan}", out var v) ? v : null;
+
+    public static void Kaydet(string form, IEnumerable<(string Alan, object? Deger)> degerler)
+    {
+        foreach (var (alan, deger) in degerler)
+            if (deger is not null && (deger is Enum || deger is IConvertible) && Convert.ToInt64(deger) != 0)
+                Degerler[$"{form}|{alan}"] = Convert.ToInt64(deger);
+        try
+        {
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Dosya)!);
+            System.IO.File.WriteAllText(Dosya, System.Text.Json.JsonSerializer.Serialize(Degerler));
+        }
+        catch (System.IO.IOException) { }
     }
 }

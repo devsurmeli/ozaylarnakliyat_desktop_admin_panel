@@ -132,6 +132,29 @@ public static class Grafik
         LegendPosition = LegendPosition.Right, LegendTextPaint = Etiket(), Background = System.Windows.Media.Brushes.Transparent,
     };
 
+    /// <summary>Sütuna tıklanınca (etiket sırası) çalışır: grafikten detaya inme.</summary>
+    public static CartesianChart Tiklayinca(this CartesianChart grafik, Action<int> islem)
+    {
+        grafik.Cursor = System.Windows.Input.Cursors.Hand;
+        grafik.ToolTip = null;
+        grafik.DataPointerDown += (_, noktalar) =>
+        {
+            if (noktalar?.FirstOrDefault() is { } n) islem(n.Index);
+        };
+        return grafik;
+    }
+
+    /// <summary>Pasta dilimine tıklanınca (dilim adı) çalışır.</summary>
+    public static PieChart Tiklayinca(this PieChart grafik, Action<string> islem)
+    {
+        grafik.Cursor = System.Windows.Input.Cursors.Hand;
+        grafik.DataPointerDown += (_, noktalar) =>
+        {
+            if (noktalar?.FirstOrDefault()?.Context.Series.Name is { } ad) islem(ad);
+        };
+        return grafik;
+    }
+
     /// <summary>Veri yoksa gösterilecek bilgi.</summary>
     public static FrameworkElement Bos(string mesaj = "Gösterilecek veri yok.") =>
         new TextBlock { Text = mesaj, Opacity = 0.7, Margin = new Thickness(4, 12, 0, 0) };

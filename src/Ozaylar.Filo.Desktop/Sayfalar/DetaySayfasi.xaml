@@ -29,6 +29,13 @@
                     <ui:Button x:Name="GeriBtn" DockPanel.Dock="Left" Icon="{ui:SymbolIcon ArrowLeft24}" Click="GeriBtn_Click" ToolTip="Geri (Alt+Sol)"
                                Style="{StaticResource HeroIkincil}" VerticalAlignment="Center" Margin="0,0,14,0" Padding="9" />
                     <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" MaxWidth="900">
+                        <!-- Konum çubuğu: önceki sayfa › bu sayfa -->
+                        <StackPanel x:Name="Konum" Orientation="Horizontal" Margin="0,0,0,2" Visibility="Collapsed">
+                            <TextBlock x:Name="KonumOnceki" Foreground="White" Opacity="0.85" FontSize="12" Cursor="Hand" TextDecorations="Underline"
+                                       MouseLeftButtonUp="KonumOnceki_Click" ToolTip="Geri dön" />
+                            <TextBlock Text="  ›  " Foreground="White" Opacity="0.6" FontSize="12" />
+                            <TextBlock Text="{Binding Baslik}" Foreground="White" Opacity="0.7" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding Baslik}" FontSize="26" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                             <Border CornerRadius="11" Padding="11,3" Margin="14,0,0,0" VerticalAlignment="Center"

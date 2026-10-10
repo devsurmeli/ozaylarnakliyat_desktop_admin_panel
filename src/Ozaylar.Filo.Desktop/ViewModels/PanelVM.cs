@@ -36,7 +36,7 @@ public sealed class PanelVM(PanelServisi servis, UyariServisi uyari, IKullaniciO
         var o = _o = await servis.OzetAsync();
         _uyarilar = await uyari.ListeAsync();
         var saat = DateTime.Now.Hour;
-        Baslik = $"{(saat < 12 ? "Günaydın" : saat < 18 ? "İyi günler" : "İyi akşamlar")}, {oturum.AdSoyad.Split(' ')[0]}";
+        Baslik = $"{(saat < 12 ? "Günaydın" : saat < 18 ? "İyi günler" : "İyi akşamlar")}, {(oturum.AdSoyad ?? "").Split(' ')[0]}";
         AltBaslik = string.Join("  ·  ", new[]
         {
             DateTime.Now.ToString("dd MMMM yyyy, dddd", Kultur.Tr),
@@ -51,23 +51,23 @@ public sealed class PanelVM(PanelServisi servis, UyariServisi uyari, IKullaniciO
         Kpiler.Clear();
         if (o.Kasalar is not null)
             Kpiler.Add(new Kpi("Kasa + banka (TL)", Para0(o.Kasalar.Where(k => k.ParaBirimi == ParaBirimi.TRY).Sum(k => k.Bakiye)),
-                string.Join("  ", o.Kasalar.Where(k => k.ParaBirimi != ParaBirimi.TRY).GroupBy(k => k.PB).Select(g => $"{g.Sum(k => k.Bakiye):N0} {g.Key}"))));
-        if (o.BuAyGelir is { } gelir) Kpiler.Add(new Kpi("Bu ay gelir", Para0(gelir), $"{o.BuAySeferSayisi} sefer"));
-        else Kpiler.Add(new Kpi("Bu ay sefer", o.BuAySeferSayisi.ToString("N0")));
-        if (o.BuAyGider is { } gider) Kpiler.Add(new Kpi("Bu ay gider", Para0(gider)));
-        if (o.BuAyKar is { } kar) Kpiler.Add(new Kpi("Bu ay kâr", Para0(kar), "KDV hariç", kar < 0 ? "kirmizi" : "yesil"));
-        if (o.AcikAlacak is { } al) Kpiler.Add(new Kpi("Açık alacak", Para0(al), o.VadesiGecenAlacak > 0 ? $"Vadesi geçen {o.VadesiGecenAlacak:N0} ₺" : null, o.VadesiGecenAlacak > 0 ? "turuncu" : null));
-        if (o.AcikBorc is { } bo) Kpiler.Add(new Kpi("Açık borç (cari)", Para0(bo), o.Odenecek30Gun > 0 ? $"30 günde ödenecek {o.Odenecek30Gun:N0} ₺" : null));
+                string.Join("  ", o.Kasalar.Where(k => k.ParaBirimi != ParaBirimi.TRY).GroupBy(k => k.PB).Select(g => $"{g.Sum(k => k.Bakiye):N0} {g.Key}")), Tikla: Git(typeof(KasaSayfasi))));
+        if (o.BuAyGelir is { } gelir) Kpiler.Add(new Kpi("Bu ay gelir", Para0(gelir), $"{o.BuAySeferSayisi} sefer", Tikla: Git(typeof(RaporlarSayfasi))));
+        else Kpiler.Add(new Kpi("Bu ay sefer", o.BuAySeferSayisi.ToString("N0"), Tikla: Git(typeof(SeferlerSayfasi))));
+        if (o.BuAyGider is { } gider) Kpiler.Add(new Kpi("Bu ay gider", Para0(gider), Tikla: Git(typeof(MasraflarSayfasi))));
+        if (o.BuAyKar is { } kar) Kpiler.Add(new Kpi("Bu ay kâr", Para0(kar), "KDV hariç", kar < 0 ? "kirmizi" : "yesil", Tikla: Git(typeof(RaporlarSayfasi))));
+        if (o.AcikAlacak is { } al) Kpiler.Add(new Kpi("Açık alacak", Para0(al), o.VadesiGecenAlacak > 0 ? $"Vadesi geçen {o.VadesiGecenAlacak:N0} ₺" : null, o.VadesiGecenAlacak > 0 ? "turuncu" : null, Tikla: Git(typeof(CarilerSayfasi))));
+        if (o.AcikBorc is { } bo) Kpiler.Add(new Kpi("Açık borç (cari)", Para0(bo), o.Odenecek30Gun > 0 ? $"30 günde ödenecek {o.Odenecek30Gun:N0} ₺" : null, Tikla: Git(typeof(CarilerSayfasi))));
         if (o.Kredi is { } kr)
         {
-            Kpiler.Add(new Kpi("Kredi borcu", Para0(kr.KalanAnaparaTL), $"Bu ay taksit {kr.BuAyOdenecekTL:N0} ₺"));
-            if (kr.GecikenTaksit > 0) Kpiler.Add(new Kpi("Gecikmiş taksit", Para0(kr.GecikenTutarTL), $"{kr.GecikenTaksit} taksit", "kirmizi"));
+            Kpiler.Add(new Kpi("Kredi borcu", Para0(kr.KalanAnaparaTL), $"Bu ay taksit {kr.BuAyOdenecekTL:N0} ₺", Tikla: Git(typeof(KrediOzetSayfasi))));
+            if (kr.GecikenTaksit > 0) Kpiler.Add(new Kpi("Gecikmiş taksit", Para0(kr.GecikenTutarTL), $"{kr.GecikenTaksit} taksit", "kirmizi", Tikla: Git(typeof(TaksitlerSayfasi))));
         }
         if (o.SoforBakiyeleri is { Count: > 0 } sb)
             Kpiler.Add(new Kpi("Şoförlerdeki para", Para0(sb.Where(s => s.Bakiye > 0).Sum(s => s.Bakiye)),
-                $"Şoförlere borç {-sb.Where(s => s.Bakiye < 0).Sum(s => s.Bakiye):N0} ₺"));
-        if (o.FaturalanmamisSefer > 0) Kpiler.Add(new Kpi("Faturalanmamış sefer", o.FaturalanmamisSefer.ToString(), Renk: "turuncu"));
-        if (o.OnayBekleyenHarcama > 0) Kpiler.Add(new Kpi("Onay bekleyen harcama", o.OnayBekleyenHarcama.ToString(), "Şoför nakit harcamaları", "turuncu"));
+                $"Şoförlere borç {-sb.Where(s => s.Bakiye < 0).Sum(s => s.Bakiye):N0} ₺", Tikla: Git(typeof(SoforHesapSayfasi))));
+        if (o.FaturalanmamisSefer > 0) Kpiler.Add(new Kpi("Faturalanmamış sefer", o.FaturalanmamisSefer.ToString(), Renk: "turuncu", Tikla: Git(typeof(FaturalarSayfasi))));
+        if (o.OnayBekleyenHarcama > 0) Kpiler.Add(new Kpi("Onay bekleyen harcama", o.OnayBekleyenHarcama.ToString(), "Şoför nakit harcamaları", "turuncu", Tikla: Git(typeof(SoforHesapSayfasi))));
 
         if (_sekmeler) return;
         _sekmeler = true;
@@ -120,13 +120,17 @@ public sealed class PanelVM(PanelServisi servis, UyariServisi uyari, IKullaniciO
         {
             var sirali = ak.OrderByDescending(a => a.Kar).ToList();
             var secim = sirali.Count <= 10 ? sirali : [.. sirali.Take(5), .. sirali.TakeLast(5)];
-            kartlar.Add(Grafik.Kart("Bu ay araç kârı — en iyi / en kötü (TL)", Grafik.Yigilmis(secim.Select(a => a.Plaka).ToList(),
-                ("Kâr", secim.Select(a => Math.Max(0, a.Kar)), Grafik.Yesil), ("Zarar", secim.Select(a => Math.Min(0, a.Kar)), Grafik.Kirmizi)), 280));
+            kartlar.Add(Grafik.Kart("Bu ay araç kârı — en iyi / en kötü (TL) · araca tıklayın", Grafik.Yigilmis(secim.Select(a => a.Plaka).ToList(),
+                ("Kâr", secim.Select(a => Math.Max(0, a.Kar)), Grafik.Yesil), ("Zarar", secim.Select(a => Math.Min(0, a.Kar)), Grafik.Kirmizi))
+                .Tiklayinca(i => _ = Detay.Arac(secim[i].AracId)), 280));
         }
         if (_o.Kredi is { Bankalar.Count: > 0 } kb)
-            kartlar.Add(Grafik.Kart("Kredi borcu — banka dağılımı", Grafik.Pasta(kb.Bankalar.Select(b => (b.Banka, b.KalanAnaparaTL))), 280));
+            kartlar.Add(Grafik.Kart("Kredi borcu — banka dağılımı", Grafik.Pasta(kb.Bankalar.Select(b => (b.Banka, b.KalanAnaparaTL)))
+                .Tiklayinca(_ => Gezgin.Git(typeof(KrediOzetSayfasi))), 280));
         return kartlar.Count == 0 ? Grafik.Bos("Grafikler için finans rapor yetkisi gerekir.") : Grafik.Izgara(2, [.. kartlar]);
     }
+
+    private static Action Git(Type sayfa) => () => Gezgin.Git(sayfa);
 
     private static Task UyariAc(Uyari u)
     {
@@ -142,6 +146,20 @@ public sealed class PanelVM(PanelServisi servis, UyariServisi uyari, IKullaniciO
             case UyariHedef.Ayarlar: Gezgin.Git(typeof(AyarlarMerkeziSayfasi)); break;
         }
         return Task.CompletedTask;
+    }
+
+    /// <summary>Yalnız uyarıları yeniler (menüdeki uyarı rozeti için, panel açık olmasa da çalışır).</summary>
+    public async Task UyarilariYenileAsync()
+    {
+        try
+        {
+            _uyarilar = await uyari.ListeAsync();
+            UyarilarDegisti?.Invoke(_uyarilar.Count(u => u.Seviye == UyariSeviye.Kritik), _uyarilar.Count);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Uyarılar yenilenemedi");
+        }
     }
 
     /// <summary>Başlıktaki zile tıklanınca: uyarılar sekmesi.</summary>

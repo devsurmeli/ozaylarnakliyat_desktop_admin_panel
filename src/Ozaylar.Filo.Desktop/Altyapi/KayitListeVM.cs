@@ -26,8 +26,13 @@ public abstract class KayitListeVM<TSatir, T>(IDisaAktarici disa, IKayitServisi<
 
     protected override async Task YeniAsync()
     {
-        var m = YeniModel();
-        if (await FormAcAsync(m, true)) await YenileAsync();
+        var kaydedildi = false;
+        do
+        {
+            if (!await FormAcAsync(YeniModel(), true)) break;
+            kaydedildi = true;
+        } while (FormPenceresi.SonYeniIstendi);
+        if (kaydedildi) await YenileAsync();
     }
 
     protected override async Task DuzenleAsync(TSatir satir)
@@ -60,7 +65,7 @@ public abstract class KayitListeVM<TSatir, T>(IDisaAktarici disa, IKayitServisi<
             new FormPenceresi(KayitAdi, m, alanlar, _ => Task.CompletedTask, salt: true, genislik: FormGenislik).ShowDialog();
             return false;
         }
-        var ok = FormPenceresi.Ac(yeni ? $"Yeni {KayitAdi}" : $"{KayitAdi} Düzenle", m, alanlar, async _ => await KaydetAsync(m), FormGenislik);
+        var ok = FormPenceresi.Ac(yeni ? $"Yeni {KayitAdi}" : $"{KayitAdi} Düzenle", m, alanlar, async _ => await KaydetAsync(m), FormGenislik, yeni);
         if (ok) AnaPencere.Basarili($"{KayitAdi} kaydedildi.");
         return ok;
     }

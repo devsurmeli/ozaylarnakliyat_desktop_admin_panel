@@ -1,21 +1,29 @@
 # Yapılacaklar / Bilinen Eksikler
 
-v2 teslimi (Ekim 2026) sonrası açık kalan işler. Yapılanlar listeden düşülür.
+Yapılanlar işaretlenir; yeni eksikler alta eklenir.
 
 ## Kullanım kolaylığı
-- [ ] Formlarda **"Kaydet ve yeni"** düğmesi (art arda masraf / yakıt girişi için).
-- [ ] Formlarda son girilen değerleri hatırlama (ör. son kullanılan kasa, araç).
-- [ ] Panel KPI kartlarına tıklayınca ilgili ekrana gitme; grafik çubuğuna tıklayınca detaya inme.
-- [ ] Detay sayfalarında konum çubuğu (ör. *Krediler › Akbank AK-TK-2025-0415*).
-- [ ] Uyarı zilinin belirli aralıklarla kendiliğinden yenilenmesi (şu an panel açılınca güncelleniyor).
+- [x] Formlarda **"Kaydet ve yeni"** (Ctrl+Shift+S) — masraf, yakıt, şoföre para ver/al, hakediş satırı ve tüm tanım listeleri.
+- [x] Yeni kayıt formlarında son seçilen değerleri hatırlama (kasa, araç, şoför, masraf türü...; kullanıcı başına).
+- [x] Panel ve Finansman Özeti kartlarına tıklayınca ilgili ekran; kredi detayında "Sonraki taksit / Gecikmiş" kartı taksit ödemeyi açar.
+- [x] Grafikten detaya inme: araç kârı çubuğu → araç detayı, banka pastası → finansman özeti.
+- [x] Detay sayfalarında konum çubuğu (ör. *Finansman Özeti › Akbank AK-TK-2025-0415*), önceki sayfaya tıklayınca geri.
+- [x] Uyarı rozeti 5 dakikada bir kendiliğinden yenilenir.
+- [x] İçerik alanındaki ince çerçeve çizgisi kaldırıldı (kendi sayfa çerçevesi + geçiş animasyonu).
 
 ## Kredi
-- [ ] Banka ödeme planı Excel içe aktarmayı gerçek banka dosyalarıyla (Ziraat, İş, Akbank, Garanti…) denemek; gerekirse başlık eşleştirmesini genişletmek.
-- [ ] v1'den aktarılan kredi ödemeleri iptal edilirse eski (v1) kasa kaydı otomatik ters çevrilmiyor — gerekirse kasa ekranından elle düzeltilir.
-- [ ] Değişken faizli krediler (oran değişikliğinde yeniden planlama).
+- [x] Banka planı Excel içe aktarmada başlık satırı otomatik bulunur (ilk 25 satır).
+- [x] "Plan Şablonu (Excel)": açık plan düzenlenebilir Excel olarak verilir, bankanın rakamlarıyla düzeltilip geri yüklenir.
+- [x] Değişken faiz: "Faiz Oranı Değiştir" — kalan anapara yeni oranla kalan vadede yeniden planlanır.
+- [x] v1'den aktarılan kredi ödemesi iptal edilince eski kasa kaydı da ters çevrilir, anapara borcu bankaya geri yazılır.
+- [ ] Gerçek banka dosyalarıyla (Ziraat, İş, Akbank, Garanti...) deneme — örnek dosya bekleniyor.
 
 ## Performans
-- [ ] Araç detay özeti 12 aylık trend için kârlılık sorgusunu 13 kez çalıştırıyor; araç sayısı artarsa tek sorguya indirilmeli.
+- [x] Araç detay özeti 12 aylık trendi eşzamanlı hesaplar.
 
 ## Örnek veri
-- [ ] Deneme veritabanında yalnız son 2 ayın seferleri var; 12 aylık trend grafiği çoğunlukla gider gösteriyor.
+- [x] Deneme veritabanında 12 aya yayılmış 66 sefer (trend grafikleri gerçekçi).
+
+## Ortam
+- [ ] Smart App Control (Windows 11) yeni derlenen imzasız dosyaları zaman zaman engelliyor. Kalıcı çözüm:
+  ya Smart App Control'ü kapatmak (Windows Güvenliği › Uygulama ve tarayıcı denetimi) ya da kod imzalama sertifikası.

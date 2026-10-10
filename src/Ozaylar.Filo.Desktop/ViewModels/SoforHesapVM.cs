@@ -17,7 +17,22 @@ namespace Ozaylar.Filo.Desktop.ViewModels;
 public static class SoforHesapFormlari
 {
     /// <summary>Şoföre para ver: sefer avansı, harçlık, yol parası veya maaş/hakediş ödemesi; kasadan nakit veya bankadan EFT.</summary>
-    public static async Task<bool> AvansAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, int? seferId = null, AvansTuru tur = AvansTuru.Avans)
+    public static Task<bool> AvansAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, int? seferId = null, AvansTuru tur = AvansTuru.Avans) =>
+        TekrarliAsync(() => TekAvansAsync(servis, s, soforId, seferId, tur));
+
+    /// <summary>"Kaydet ve yeni" seçildikçe formu yeniden açar; en az bir kayıt olduysa true.</summary>
+    private static async Task<bool> TekrarliAsync(Func<Task<bool>> form)
+    {
+        var kaydedildi = false;
+        do
+        {
+            if (!await form()) break;
+            kaydedildi = true;
+        } while (FormPenceresi.SonYeniIstendi);
+        return kaydedildi;
+    }
+
+    private static async Task<bool> TekAvansAsync(SoforHesapServisi servis, Secimler s, short? soforId, int? seferId, AvansTuru tur)
     {
         var a = new Avans { SoforId = soforId ?? 0, SeferId = seferId, Tarih = DateOnly.FromDateTime(DateTime.Today), Tur = tur };
         var alanlar = new List<FormAlani>
@@ -33,7 +48,7 @@ public static class SoforHesapFormlari
             new() { Etiket = "Kur (dövizli kasa)", Yol = nameof(Avans.Kur), Tip = AlanTipi.Ondalik },
             new() { Etiket = "Açıklama", Yol = nameof(Avans.Aciklama), MaksUzunluk = 200 },
         };
-        var ok = FormPenceresi.Ac("Şoföre Para Ver", a, alanlar, _ => servis.AvansVerAsync(a));
+        var ok = FormPenceresi.Ac("Şoföre Para Ver", a, alanlar, _ => servis.AvansVerAsync(a), yeni: true);
         if (ok) AnaPencere.Basarili($"{a.Tutar:N2} verildi ({a.Tur.Ad()}).");
         return ok;
     }
@@ -54,7 +69,10 @@ public static class SoforHesapFormlari
     }
 
     /// <summary>Şoförden para al: elindeki avansın iadesi veya müşteriden tahsil ettiği navlun.</summary>
-    public static async Task<bool> ParaAlAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, int? seferId = null)
+    public static Task<bool> ParaAlAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, int? seferId = null) =>
+        TekrarliAsync(() => TekParaAlAsync(servis, s, soforId, seferId));
+
+    private static async Task<bool> TekParaAlAsync(SoforHesapServisi servis, Secimler s, short? soforId, int? seferId)
     {
         var m = new ParaAlModel { SoforId = soforId, SeferId = seferId };
         var alanlar = new List<FormAlani>
@@ -78,7 +96,7 @@ public static class SoforHesapFormlari
             new() { Etiket = "Açıklama", Yol = nameof(ParaAlModel.Aciklama), MaksUzunluk = 200 },
         };
         var ok = FormPenceresi.Ac("Şoförden Para Al", m, alanlar, _ => servis.ParaAlAsync(m.SoforId!.Value, m.Tur, m.Tarih, m.Tutar, m.KasaId,
-            m.MusteriId, m.SeferId, m.AracId, m.Aciklama, m.PB, m.Kur));
+            m.MusteriId, m.SeferId, m.AracId, m.Aciklama, m.PB, m.Kur), yeni: true);
         if (ok) AnaPencere.Basarili("Kaydedildi.");
         return ok;
     }
@@ -159,7 +177,10 @@ public static class SoforHesapFormlari
     }
 
     /// <summary>Elle hakediş satırı: ek ödeme (prim, ikramiye) veya kesinti (ceza, hasar, avans kesintisi).</summary>
-    public static async Task<bool> TahakkukAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, TahakkukTuru tur = TahakkukTuru.Ek)
+    public static Task<bool> TahakkukAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, TahakkukTuru tur = TahakkukTuru.Ek) =>
+        TekrarliAsync(() => TekTahakkukAsync(servis, s, soforId, tur));
+
+    private static async Task<bool> TekTahakkukAsync(SoforHesapServisi servis, Secimler s, short? soforId, TahakkukTuru tur)
     {
         var m = new TahakkukModel { SoforId = soforId, Tur = tur };
         var alanlar = new List<FormAlani>
@@ -172,7 +193,7 @@ public static class SoforHesapFormlari
             new() { Etiket = "Açıklama", Yol = nameof(TahakkukModel.Aciklama), Zorunlu = true, MaksUzunluk = 200 },
         };
         var ok = FormPenceresi.Ac("Hakediş — Ek / Kesinti", m, alanlar, _ => servis.TahakkukYazAsync(m.Donem.Year * 100 + m.Donem.Month,
-            [new PersonelTahakkuk { SoforId = m.SoforId!.Value, Tur = m.Tur, Tutar = m.Tutar, SeferId = m.SeferId, Aciklama = m.Aciklama, Tarih = m.Donem }]));
+            [new PersonelTahakkuk { SoforId = m.SoforId!.Value, Tur = m.Tur, Tutar = m.Tutar, SeferId = m.SeferId, Aciklama = m.Aciklama, Tarih = m.Donem }]), yeni: true);
         if (ok) AnaPencere.Basarili("Hakediş satırı yazıldı.");
         return ok;
     }

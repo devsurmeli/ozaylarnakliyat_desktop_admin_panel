@@ -54,11 +54,14 @@ public sealed class DetayServisi(IFiloDbContextFactory factory, IKullaniciOturum
         if (oturum.Yetkili(Izinler.RaporFinans))
         {
             donem = (await rapor.AracKarlilikAsync(bas, bit, ct)).SingleOrDefault(r => r.AracId == aracId);
-            var ay = new DateOnly(bit.Year, bit.Month, 1).AddMonths(-11);
-            for (var i = 0; i < 12; i++, ay = ay.AddMonths(1))
+            // 12 ay eşzamanlı hesaplanır (her ay kendi bağlantısını kullanır).
+            var ilkAy = new DateOnly(bit.Year, bit.Month, 1).AddMonths(-11);
+            var aylar = Enumerable.Range(0, 12).Select(i => ilkAy.AddMonths(i)).ToList();
+            var sonuclar = await Task.WhenAll(aylar.Select(ay => rapor.AracKarlilikAsync(ay, ay.AddMonths(1).AddDays(-1), ct)));
+            for (var i = 0; i < 12; i++)
             {
-                var r = (await rapor.AracKarlilikAsync(ay, ay.AddMonths(1).AddDays(-1), ct)).SingleOrDefault(x => x.AracId == aracId);
-                trend.Add(new AylikTrend($"{ay.Month:D2}.{ay.Year % 100:D2}", r?.Gelir ?? 0, r?.ToplamGider ?? 0, r?.Kar ?? 0));
+                var r = sonuclar[i].SingleOrDefault(x => x.AracId == aracId);
+                trend.Add(new AylikTrend($"{aylar[i].Month:D2}.{aylar[i].Year % 100:D2}", r?.Gelir ?? 0, r?.ToplamGider ?? 0, r?.Kar ?? 0));
             }
         }
         decimal? lt = null;

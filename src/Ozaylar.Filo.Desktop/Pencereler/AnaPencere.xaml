@@ -23,10 +23,8 @@
 
             <ui:TitleBar x:Name="Baslik" Title="" Grid.Row="0" />
 
-            <!-- Sayfa çerçevesi: menü paneli gizli, gezinme YanMenu üzerinden -->
-            <ui:NavigationView x:Name="Menu" Grid.Row="1" IsPaneVisible="False" IsBackButtonVisible="Collapsed" IsPaneToggleVisible="False"
-                               PaneDisplayMode="Left" OpenPaneLength="0" CompactPaneLength="0" FrameMargin="0" IsFooterSeparatorVisible="False" IsTopSeparatorVisible="False"
-                               Padding="18,0,0,0" Transition="FadeInWithSlide" TransitionDuration="220" />
+            <!-- Sayfa çerçevesi (gezinme YanMenu ve Gezgin üzerinden) -->
+            <k:SayfaCercevesi x:Name="Menu" Grid.Row="1" Margin="18,0,0,0" />
 
             <ui:SnackbarPresenter x:Name="Bildirim" Grid.Row="1" VerticalAlignment="Bottom" />
         </Grid>

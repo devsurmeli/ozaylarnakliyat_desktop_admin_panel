@@ -10,7 +10,12 @@ using Wpf.Ui.Controls;
 namespace Ozaylar.Filo.Desktop.Altyapi;
 
 /// <summary>Detay sayfasının üst şeridindeki gösterge kartı. Renk: kirmizi/turuncu/yesil/null.</summary>
-public sealed record Kpi(string Baslik, string Deger, string? Alt = null, string? Renk = null, double? Ilerleme = null);
+public sealed record Kpi(string Baslik, string Deger, string? Alt = null, string? Renk = null, double? Ilerleme = null, Action? Tikla = null)
+{
+    /// <summary>Kart tıklanınca (ilgili ekrana git). Boşsa kart tıklanamaz.</summary>
+    public System.Windows.Input.ICommand? Komut { get; } = Tikla is null ? null : new RelayCommand(Tikla);
+    public bool Tiklanabilir => Tikla is not null;
+}
 
 /// <summary>Detay sayfasında bir sekme. İçerik ilk seçildiğinde oluşturulur (IListeVM → liste görünümü, FrameworkElement → kendisi).</summary>
 public sealed partial class DetaySekme(string baslik, Func<object> olustur) : ObservableObject
@@ -148,7 +153,7 @@ public sealed class SekmeListeVM<T>(string baslik, IReadOnlyList<Kolon> kolonlar
 /// <summary>Uygulama içi gezinme: detay sayfalarına git, geri dön (Alt+Sol / fare geri tuşu).</summary>
 public static class Gezgin
 {
-    private static NavigationView? _nav;
+    private static SayfaCercevesi? _nav;
     private static readonly List<(Type Tip, object? Veri)> _gecmis = [];
     private static (Type Tip, object? Veri)? _mevcut;
     private static bool _geriGidiyor;
@@ -157,13 +162,29 @@ public static class Gezgin
     public static bool GeriVar => _gecmis.Count > 0;
     public static Type? MevcutSayfa => _mevcut?.Tip;
 
-    public static void Bagla(NavigationView nav)
+    /// <summary>Konum çubuğu için bir önceki sayfanın başlığı (liste veya detay).</summary>
+    public static string? OncekiBaslik
+    {
+        get
+        {
+            if (_gecmis.Count == 0) return null;
+            var (tip, veri) = _gecmis[^1];
+            if (veri is DetayVM d) return d.Baslik;
+            var sayfa = App.Servisler.GetService(tip) as FrameworkElement;
+            return sayfa?.DataContext switch
+            {
+                IListeVM l => l.Baslik,
+                DetayVM dv => dv.Baslik,
+                _ => (sayfa as System.Windows.Controls.Page)?.Title,
+            };
+        }
+    }
+
+    public static void Bagla(SayfaCercevesi nav)
     {
         _nav = nav;
-        nav.Navigated += (_, e) =>
+        nav.Gecildi += sayfa =>
         {
-            var sayfa = e.Page as FrameworkElement;
-            if (sayfa is null) return;
             var yeni = (sayfa.GetType(), sayfa is DetaySayfasi ? sayfa.DataContext : null);
             if (!_geriGidiyor && _mevcut is { } m && !(m.Tip == yeni.Item1 && ReferenceEquals(m.Veri, yeni.Item2)))
             {
@@ -180,10 +201,10 @@ public static class Gezgin
     public static void Ac(DetayVM vm)
     {
         if (_nav is null) return;
-        _nav.Navigate(typeof(DetaySayfasi), vm);
+        _nav.Git(typeof(DetaySayfasi), vm);
     }
 
-    public static void Git(Type sayfa) => _nav?.Navigate(sayfa);
+    public static void Git(Type sayfa) => _nav?.Git(sayfa);
 
     public static void Geri()
     {
@@ -191,6 +212,6 @@ public static class Gezgin
         var (tip, veri) = _gecmis[^1];
         _gecmis.RemoveAt(_gecmis.Count - 1);
         _geriGidiyor = true;
-        _nav.Navigate(tip, veri);
+        _nav.Git(tip, veri);
     }
 }

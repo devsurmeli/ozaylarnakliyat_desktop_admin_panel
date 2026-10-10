@@ -231,6 +231,33 @@ public class ServisTestleri(VeritabaniFixture fx)
     }
 
     [Fact]
+    public async Task Faiz_orani_degisince_kalan_taksitler_yeni_oranla_planlanir()
+    {
+        var banka = await T.CariAsync(CariTipi.Finans);
+        var kasa = await T.KasaAsync(1_000_000);
+        var k = await Kredi.KaydetAsync(new Kredi
+        {
+            KrediNo = $"DF-{TestVerisi.Sira()}", BankaCariId = banka.Id, KullandirimTarihi = Bugun, Anapara = 120_000, FaizOrani = 2m, BsmvOrani = 0,
+            VadeSayisi = 12, IlkVade = Bugun.AddMonths(1),
+        }, null, []);
+        var d = await Kredi.DetayAsync(k.Id);
+        foreach (var t in d.Plan.Take(3)) await Kredi.TaksitOdeAsync(t.Id, t.Vade, kasa, null, null);
+        var kalan = (await Kredi.DetayAsync(k.Id)).Ozet.KalanAnapara;
+        var eskiTaksit = d.Plan[3].Toplam;
+
+        await Kredi.FaizDegistirAsync(k.Id, 3m, FaizTipi.Aylik);
+        d = await Kredi.DetayAsync(k.Id);
+        var acik = d.Plan.Where(p => p.Durum == TaksitDurum.Bekliyor).ToList();
+        Assert.Equal((byte)2, d.Kredi.AktifVersiyon);
+        Assert.Equal(3m, d.Kredi.FaizOrani);
+        Assert.Equal(9, acik.Count); // kalan vade korunur
+        Assert.Equal(kalan, acik.Sum(p => p.Anapara));
+        Assert.Equal(Math.Round(kalan * 0.03m, 2), acik[0].Faiz);
+        Assert.True(acik[0].Toplam > eskiTaksit);
+        Assert.Equal(3, d.Plan.Count(p => p.Durum == TaksitDurum.Odendi));
+    }
+
+    [Fact]
     public async Task Sofor_para_ver_al_musteri_tahsilati_bakiye_ve_arac_bazli_defter()
     {
         var arac = await T.AracAsync();

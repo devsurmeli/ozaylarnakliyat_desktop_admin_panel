@@ -53,12 +53,15 @@
 
             <!-- Gösterge kartı (Kpi kaydı): ikon rozeti + başlık + büyük değer + alt bilgi / ilerleme -->
             <DataTemplate x:Key="KpiSablon">
-                <Border Width="214" MinHeight="96" Margin="0,0,12,12" Padding="16,14" Style="{StaticResource KpiKart}">
+                <Border x:Name="Kutu" Width="214" MinHeight="96" Margin="0,0,12,12" Padding="16,14" Style="{StaticResource KpiKart}">
+                    <Border.InputBindings><MouseBinding MouseAction="LeftClick" Command="{Binding Komut}" /></Border.InputBindings>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon x:Name="GitOk" Symbol="ArrowUpRight24" FontSize="14" Foreground="{DynamicResource Vurgu}" Grid.Column="1"
+                                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-6,0" Visibility="Collapsed" />
                         <Border x:Name="Rozet" Width="40" Height="40" CornerRadius="12" VerticalAlignment="Top" Margin="0,2,12,0"
                                 Background="{DynamicResource IkonZemin}">
                             <ui:SymbolIcon x:Name="Ikon" Symbol="{Binding Baslik, Converter={x:Static alt:KpiIkonDonusturucu.Ornek}}" FontSize="20"
@@ -92,6 +95,10 @@
                         <Setter TargetName="Deger" Property="Foreground" Value="{DynamicResource YesilMetin}" />
                         <Setter TargetName="Rozet" Property="Background" Value="{DynamicResource YesilZemin}" />
                         <Setter TargetName="Ikon" Property="Foreground" Value="{DynamicResource YesilMetin}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Tiklanabilir}" Value="True">
+                        <Setter TargetName="GitOk" Property="Visibility" Value="Visible" />
+                        <Setter TargetName="Kutu" Property="Cursor" Value="Hand" />
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Ilerleme, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" Value="Visible">
                         <Setter TargetName="Cubuk" Property="Visibility" Value="Visible" />

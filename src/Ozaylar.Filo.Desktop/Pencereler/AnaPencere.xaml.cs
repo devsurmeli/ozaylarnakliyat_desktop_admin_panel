@@ -25,14 +25,13 @@ public partial class AnaPencere : FluentWindow
         _panel = panel;
         _oturum = oturum;
         Title = $"Ozaylar Filo — {oturum.AdSoyad}";
-        Menu.SetServiceProvider(servisler);
         Gezgin.Bagla(Menu);
         snackbar.SetSnackbarPresenter(Bildirim);
         _bildirim = snackbar;
 
         MenuOlustur();
-        YanMenu.Kullanici(oturum.AdSoyad, (string)BasHarfDonusturucu.Ornek.Convert(oturum.AdSoyad, typeof(string), null, Kultur.Tr));
-        YanMenu.SayfaIstendi += o => Menu.Navigate(o.Sayfa!);
+        YanMenu.Kullanici(oturum.AdSoyad ?? "", (string)BasHarfDonusturucu.Ornek.Convert(oturum.AdSoyad, typeof(string), null, Kultur.Tr));
+        YanMenu.SayfaIstendi += o => Menu.Git(o.Sayfa!);
         Gezgin.Degisti += () => YanMenu.SayfaDegisti(Gezgin.MevcutSayfa);
         panel.UyarilarDegisti += UyariRozeti;
         Tema.Degisti += TemaOgesiGuncelle;
@@ -47,7 +46,13 @@ public partial class AnaPencere : FluentWindow
         {
             if (e.ChangedButton == MouseButton.XButton1) { Gezgin.Geri(); e.Handled = true; }
         };
-        Loaded += (_, _) => Menu.Navigate(typeof(PanelSayfasi));
+        Loaded += (_, _) => Menu.Git(typeof(PanelSayfasi));
+
+        // Uyarı rozeti 5 dakikada bir güncellenir (yeni gecikmiş taksit, evrak, şoför harcaması...).
+        var zamanlayici = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+        zamanlayici.Tick += async (_, _) => await _panel.UyarilariYenileAsync();
+        zamanlayici.Start();
+        Closed += (_, _) => zamanlayici.Stop();
     }
 
     /// <summary>Menü yapısı; yetkisi olmayan sayfalar ve boş kalan gruplar gösterilmez.</summary>
@@ -99,7 +104,7 @@ public partial class AnaPencere : FluentWindow
         {
             Tikla = () =>
             {
-                Menu.Navigate(typeof(PanelSayfasi));
+                Menu.Git(typeof(PanelSayfasi));
                 _panel.UyarilariGoster();
             },
         };

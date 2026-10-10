@@ -508,8 +508,62 @@ public sealed class KrediServisi(IFiloDbContextFactory factory, IKullaniciOturum
         o.Iptal = true;
         o.Aciklama = $"{o.Aciklama} [İPTAL: {neden}]";
         await Defter.TersKayitAsync(db, KaynakTip.KrediOdeme, o.Id, saat.Bugun, neden, ct);
+        if (o.Aciklama?.Contains("(v1 aktarım)") == true && o.KrediTaksitId is { } v1Taksit)
+        {
+            // v1'den aktarılan ödeme: kasa kaydı eski "Finansman Taksiti" tipinde; o ters çevrilir ve
+            // geri gelen anapara borcu banka carisine yazılır (v2 defter düzeniyle tutarlı kalsın).
+            await Defter.TersKayitAsync(db, KaynakTip.FinansmanTaksit, v1Taksit, saat.Bugun, neden, ct);
+            if (o.Anapara > 0)
+                Defter.Cari(db, k.BankaCariId, saat.Bugun, 0, o.Anapara, KaynakTip.KrediOdeme, o.Id,
+                    $"v1 kredi ödemesi iptali {k.KrediNo} — anapara borcu geri", k.ParaBirimi, o.Kur);
+        }
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);
+    }
+
+    /// <summary>
+    /// Değişken faiz: kalan anapara yeni oranla, kalan taksit sayısı korunarak yeniden planlanır (yeni plan versiyonu).
+    /// Ödenmiş taksitler değişmez; açık taksitler "Plan değişti" olur.
+    /// </summary>
+    public async Task FaizDegistirAsync(short krediId, decimal yeniOran, FaizTipi tip, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.FinansmanYaz);
+        if (yeniOran < 0) throw new DomainException("Faiz oranı negatif olamaz.");
+        var d = await DetayAsync(krediId, ct: ct);
+        var k = d.Kredi;
+        if (k.Durum == KrediDurum.Kapandi) throw new DomainException("Kredi kapanmış.");
+        var acik = d.Plan.Where(p => p.Versiyon == k.AktifVersiyon && p.Durum is TaksitDurum.Bekliyor or TaksitDurum.Kismi).OrderBy(p => p.Vade).ToList();
+        if (acik.Count == 0) throw new DomainException("Açık taksit yok; yeniden planlanacak bir şey kalmadı.");
+        if (acik.Any(p => p.Odenen > 0)) throw new DomainException("Kısmi ödenmiş taksit var; önce o taksiti tamamlayın.");
+        var aylik = tip == FaizTipi.Aylik ? yeniOran / 100m : yeniOran / 1200m;
+        var plan = KrediHesap.YenidenPlanla(d.Ozet.KalanAnapara, aylik, k.BsmvOrani, k.KkdfOrani, (short)acik.Count, acik[0].Vade, 0,
+                YenidenPlanModu.TaksitiDusur, acik[0].No)
+            .Select(s => new KrediTaksit
+            {
+                TaksitNo = s.No, VadeTarihi = s.Vade, Anapara = s.Anapara, Faiz = s.Faiz, Bsmv = s.Bsmv, Kkdf = s.Kkdf, Toplam = s.Toplam, KalanAnapara = s.KalanAnapara,
+            }).ToList();
+        var odemeVar = d.Odemeler.Any(o => !o.Iptal);
+        if (!odemeVar)
+        {
+            // Hiç ödeme yoksa kredi kaydı da yeni oranla güncellenir (plan baştan kurulur).
+            await using var db = factory.Olustur();
+            var kayit = await db.Krediler.SingleAsync(x => x.Id == krediId, ct);
+            kayit.FaizOrani = yeniOran;
+            kayit.FaizTipi = tip;
+            await db.KaydetAsync(ct);
+            await PlanDegistirAsync(krediId, plan, ct);
+            return;
+        }
+        // Ödemeli kredide finansal alanlar kilitlidir; oran plan versiyonu ile değişir, kredi kartında not düşülür.
+        await PlanDegistirAsync(krediId, plan, ct);
+        await using (var db = factory.Olustur())
+        {
+            var kayit = await db.Krediler.SingleAsync(x => x.Id == krediId, ct);
+            kayit.FaizOrani = yeniOran;
+            kayit.FaizTipi = tip;
+            kayit.Aciklama = Metin.Temizle($"{kayit.Aciklama} | {saat.Bugun:dd.MM.yyyy}: faiz %{yeniOran:0.##} {(tip == FaizTipi.Aylik ? "aylık" : "yıllık")} oldu");
+            await db.KaydetAsync(ct);
+        }
     }
 
     private async Task<KrediOdeme> OdemeIsleAsync(IFiloDbContext db, Kredi k, int? taksitId, DateOnly tarih, KrediOdemeTuru tur, byte kasaId, decimal kur,

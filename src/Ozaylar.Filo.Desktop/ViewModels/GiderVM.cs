@@ -50,7 +50,7 @@ public static class MasrafFormu
             new() { Etiket = "Belge / fiş no", Yol = nameof(Masraf.BelgeNo), MaksUzunluk = 30 },
             new() { Etiket = "Açıklama", Yol = nameof(Masraf.Aciklama), MaksUzunluk = 200 },
         };
-        var ok = FormPenceresi.Ac(m.Id == 0 ? "Yeni Masraf" : "Masraf Düzenle", m, alanlar, _ => gider.MasrafKaydetAsync(m), 900);
+        var ok = FormPenceresi.Ac(m.Id == 0 ? "Yeni Masraf" : "Masraf Düzenle", m, alanlar, _ => gider.MasrafKaydetAsync(m), 900, yeni: m.Id == 0);
         if (ok && m.OdemeSekli == OdemeSekli.SoforNakit && !m.Onayli)
             await Dialog.Bilgi("Şoför harcaması onaya düştü. Muhasebe/yönetici onayladıktan sonra mahsuba alınabilir.");
         return ok;
@@ -80,8 +80,14 @@ public sealed class MasrafListeVM(IDisaAktarici d, GiderServisi gider, Secimler 
 
     protected override async Task YeniAsync()
     {
-        var m = new Masraf { Tarih = DateOnly.FromDateTime(DateTime.Today), Merkez = MasrafMerkezi.Arac, OdemeSekli = OdemeSekli.Kasa };
-        if (await MasrafFormu.AcAsync(m, gider, s, f)) await YenileAsync();
+        var kaydedildi = false;
+        do
+        {
+            var m = new Masraf { Tarih = DateOnly.FromDateTime(DateTime.Today), Merkez = MasrafMerkezi.Arac, OdemeSekli = OdemeSekli.Kasa };
+            if (!await MasrafFormu.AcAsync(m, gider, s, f)) break;
+            kaydedildi = true;
+        } while (FormPenceresi.SonYeniIstendi);
+        if (kaydedildi) await YenileAsync();
     }
 
     protected override async Task DuzenleAsync(MasrafSatir satir)
@@ -125,7 +131,13 @@ public sealed class YakitListeVM(IDisaAktarici d, GiderServisi gider, Secimler s
 
     protected override async Task YeniAsync()
     {
-        if (await FormAsync(new Yakit { AlimZamani = DateTime.Now, OdemeSekli = OdemeSekli.Kart, FullDepo = true })) await YenileAsync();
+        var kaydedildi = false;
+        do
+        {
+            if (!await FormAsync(new Yakit { AlimZamani = DateTime.Now, OdemeSekli = OdemeSekli.Kart, FullDepo = true })) break;
+            kaydedildi = true;
+        } while (FormPenceresi.SonYeniIstendi);
+        if (kaydedildi) await YenileAsync();
     }
 
     protected override async Task DuzenleAsync(YakitSatir satir)
@@ -160,7 +172,7 @@ public sealed class YakitListeVM(IDisaAktarici d, GiderServisi gider, Secimler s
         {
             if (y.ParaBirimi != ParaBirimi.TRY && y.Kur <= 1) y.Kur = await kur.KurAsync(y.ParaBirimi, y.Tarih) ?? y.Kur;
             await gider.YakitKaydetAsync(y, onay);
-        }, 900);
+        }, 900, yeni: y.Id == 0);
     }
 
     protected override async Task SilAsync(YakitSatir satir)

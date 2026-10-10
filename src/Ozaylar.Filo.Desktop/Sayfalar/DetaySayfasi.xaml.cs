@@ -16,7 +16,12 @@ public partial class DetaySayfasi : Page
         DataContextChanged += async (_, _) => await HazirlaAsync();
         Loaded += async (_, _) =>
         {
-            GeriBtn.Visibility = Gezgin.GeriVar ? Visibility.Visible : Visibility.Collapsed;
+            // Menüden açılan pano sayfalarında (Panel, Finansman Özeti, Ayarlar) geri/konum gösterilmez.
+            var menuSayfasi = GetType() != typeof(DetaySayfasi);
+            GeriBtn.Visibility = Gezgin.GeriVar && !menuSayfasi ? Visibility.Visible : Visibility.Collapsed;
+            var onceki = menuSayfasi ? null : Gezgin.OncekiBaslik;
+            KonumOnceki.Text = onceki ?? "";
+            Konum.Visibility = string.IsNullOrEmpty(onceki) ? Visibility.Collapsed : Visibility.Visible;
             // Sayfaya geri dönüldüğünde (veya panel tekrar açıldığında) güncel veriyi göster.
             var dahaOnce = Vm?.Yuklendi == true;
             await HazirlaAsync();
@@ -35,6 +40,8 @@ public partial class DetaySayfasi : Page
     }
 
     private void GeriBtn_Click(object sender, RoutedEventArgs e) => Gezgin.Geri();
+
+    private void KonumOnceki_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => Gezgin.Geri();
 
     private void DigerBtn_Click(object sender, RoutedEventArgs e) { if (Vm is { } vm) MenuAc(DigerBtn, vm.DigerEylemler); }
 

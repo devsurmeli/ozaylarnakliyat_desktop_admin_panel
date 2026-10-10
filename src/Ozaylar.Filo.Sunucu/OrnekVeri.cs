@@ -47,17 +47,18 @@ public static class OrnekVeri
 
         await using (var db = f.Olustur())
         {
-            db.KasaHesaplari.Add(new KasaHesap { Ad = "Ziraat Bankası TL", HesapTipi = KasaHesapTipi.Banka, BankaAdi = "Ziraat", AcilisBakiye = 3_500_000, AcilisTarihi = bugun.AddMonths(-3) });
-            db.KasaHesaplari.Add(new KasaHesap { Ad = "İş Bankası EUR", HesapTipi = KasaHesapTipi.Banka, BankaAdi = "İş Bankası", ParaBirimi = ParaBirimi.EUR, AcilisBakiye = 12_000, AcilisTarihi = bugun.AddMonths(-3) });
+            db.KasaHesaplari.Add(new KasaHesap { Ad = "Ziraat Bankası TL", HesapTipi = KasaHesapTipi.Banka, BankaAdi = "Ziraat", AcilisBakiye = 3_500_000, AcilisTarihi = bugun.AddMonths(-13) });
+            db.KasaHesaplari.Add(new KasaHesap { Ad = "İş Bankası EUR", HesapTipi = KasaHesapTipi.Banka, BankaAdi = "İş Bankası", ParaBirimi = ParaBirimi.EUR, AcilisBakiye = 12_000, AcilisTarihi = bugun.AddMonths(-13) });
             var merkez = await db.KasaHesaplari.FirstAsync(k => k.Ad == "Merkez Kasa");
-            merkez.AcilisBakiye = 150_000;
-            merkez.AcilisTarihi = bugun.AddMonths(-3);
+            merkez.AcilisBakiye = 750_000;
+            merkez.AcilisTarihi = bugun.AddMonths(-13);
             foreach (var (ad, ulke, il) in new (string, short, byte?)[]
                      { ("Gebze Lojistik Merkezi", 1, 41), ("İzmir Kemalpaşa Depo", 1, 35), ("Ankara OSB", 1, 6), ("Mersin Limanı", 1, 33), ("Bursa NOSAB", 1, 16), ("Köln Eifeltor Terminal", 2, null) })
                 db.Lokasyonlar.Add(new Lokasyon { Ad = ad, UlkeId = ulke, IlId = il });
-            db.HarcirahTarifeleri.Add(new HarcirahTarife { UlkeId = 2, GunlukTutar = 45, ParaBirimi = ParaBirimi.EUR, GecerlilikBaslangic = new DateOnly(2026, 1, 1), Aciklama = "Almanya" });
+            db.HarcirahTarifeleri.Add(new HarcirahTarife { UlkeId = 2, GunlukTutar = 45, ParaBirimi = ParaBirimi.EUR, GecerlilikBaslangic = bugun.AddYears(-2), Aciklama = "Almanya" });
             var yurtici = await db.HarcirahTarifeleri.FirstAsync(h => h.UlkeId == null);
             yurtici.GunlukTutar = 900;
+            yurtici.GecerlilikBaslangic = bugun.AddYears(-2);
             await db.SaveChangesAsync();
         }
 
@@ -84,7 +85,7 @@ public static class OrnekVeri
         for (var i = 0; i < araclar.Count; i++)
         {
             var d = await dorseS.KaydetAsync(new Dorse { Plaka = $"34 DRS {201 + i}", DorseTipi = i == 2 ? DorseTipi.Frigo : DorseTipi.Tenteli, Marka = "Tırsan", KapasiteTon = 26 });
-            await aracS.DorseBaglaAsync(araclar[i].Id, d.Id, bugun.AddMonths(-3));
+            await aracS.DorseBaglaAsync(araclar[i].Id, d.Id, bugun.AddMonths(-13));
         }
         var soforS = sp.GetRequiredService<SoforServisi>();
         var soforler = new List<Sofor>();
@@ -126,19 +127,21 @@ public static class OrnekVeri
             ("Gebze", "İzmir", 1_050, 48_000, 2), ("Gebze", "Ankara", 900, 42_000, 2), ("Mersin", "Gebze", 1_900, 78_000, 3), ("Bursa", "Ankara", 800, 38_000, 2),
         };
         var acikSeferler = new List<Sefer>();
-        for (var i = 0; i < 16; i++)
+        const int seferSayisi = 64; // ~12 ay, araç başına ayda ~1-2 sefer
+        for (var i = 0; i < seferSayisi; i++)
         {
             var arac = araclar[i % 4];
             var sofor = soforler[i % 4];
             var r = rotalar[i % rotalar.Length];
-            var tarih = bugun.AddDays(-58 + (int)(i * 3.5));
+            // Kapanan seferler son 12 aya yayılır (sonuncusu birkaç gün önce teslim); açık 4 sefer bu hafta.
+            var tarih = i < seferSayisi - 4 ? bugun.AddDays(-355 + (int)(i * 5.95)) : bugun.AddDays(-3 + (i - (seferSayisi - 4)) * 2);
             var musteri = i % 3 == 0 ? mEge : mAnadolu;
             var sefer = await seferS.KaydetAsync(new Sefer
             {
                 MusteriCariId = musteri.Id, AracId = arac.Id, CikisLokasyonId = lok[r.Cikis], VarisLokasyonId = lok[r.Varis], PlanlananTarih = tarih,
                 YukTanimi = musteri == mEge ? "Tekstil ürünü (palet)" : "Gıda (kuru yük)", Tonaj = 22, NavlunTutar = r.Navlun + rnd.Next(-3, 4) * 1_000,
             }, [sofor.Id], [], uyarilariOnayla: true);
-            if (i >= 14) { acikSeferler.Add(sefer); continue; } // son iki sefer planlı kalsın
+            if (i >= seferSayisi - 2) { acikSeferler.Add(sefer); continue; } // son iki sefer planlı kalsın
 
             var kayit = (await seferS.GetirAsync(sefer.Id))!;
             var cikisKm = (await AracKmAsync(f, arac.Id)) + 15;
@@ -161,7 +164,7 @@ public static class OrnekVeri
             kayit.TeslimTarihi = tarih.AddDays(r.Gun - 1).ToDateTime(new TimeOnly(14, 0));
             kayit.DonusTarihi = tarih.AddDays(r.Gun).ToDateTime(new TimeOnly(18, 0));
             await seferS.KaydetAsync(kayit, [sofor.Id], [], true);
-            if (i >= 12) continue; // iki sefer yolda kalsın
+            if (i >= seferSayisi - 4) continue; // iki sefer yolda kalsın
             await seferS.DurumDegistirAsync(sefer.Id, SeferDurum.TeslimEdildi);
             await seferS.DurumDegistirAsync(sefer.Id, SeferDurum.Kapatildi);
 
@@ -357,7 +360,7 @@ public static class OrnekVeri
             db.Zimmetler.Add(new Zimmet { Tur = ZimmetTuru.Telefon, Ad = "Samsung A15 + hat", SoforId = soforler[1].Id, VerilisTarihi = bugun.AddMonths(-8), IadeTarihi = bugun.AddMonths(-1), Durum = ZimmetDurum.IadeEdildi });
             await db.SaveChangesAsync();
         }
-        for (var i = 0; i < araclar.Count; i++) await soforH.AracAtaAsync(soforler[i].Id, araclar[i].Id, bugun.AddMonths(-3));
+        for (var i = 0; i < araclar.Count; i++) await soforH.AracAtaAsync(soforler[i].Id, araclar[i].Id, bugun.AddMonths(-13));
         await soforH.AracAtaAsync(soforler[5].Id, araclar[4].Id, bugun.AddDays(-21)); // yurtdışı sefer: ikinci şoför
 
         await soforH.AvansVerAsync(new Avans { SoforId = soforler[0].Id, Tur = AvansTuru.Harclik, Tarih = bugun.AddDays(-2), Tutar = 3_000, KasaHesapId = kasaZiraat, Aciklama = "EFT harçlık" });

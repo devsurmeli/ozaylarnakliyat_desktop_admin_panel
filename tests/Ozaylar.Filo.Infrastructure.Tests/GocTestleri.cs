@@ -66,6 +66,19 @@ public sealed class GocTestleri : IAsyncLifetime
             var bakiye = await db.CariHareketleri.Where(h => h.CariId == bankaId).SumAsync(h => h.Borc - h.Alacak);
             Assert.Equal(-20_197.35m, bakiye);
         }
+
+        // Aktarılan ödeme iptal edilebilir: taksit açılır, anapara borcu banka carisine geri yazılır.
+        var oturum = new Application.Guvenlik.KullaniciOturumu();
+        oturum.Baslat(1, "Test", Application.Guvenlik.Izinler.Tumu.Select(i => i.Kod));
+        var factory = new FiloDbContextFactory(DbSecenekleri.Ana(_b.AnaBaglanti), oturum, new Application.Abstractions.SistemSaati());
+        var kredi = new Application.Servisler.KrediServisi(factory, oturum, new Application.Abstractions.SistemSaati(), new Application.Servisler.DovizServisi(factory));
+        var odeme = (await kredi.DetayAsync(7)).Odemeler.Single();
+        await kredi.OdemeIptalAsync(odeme.Id, "test");
+        var d = await kredi.DetayAsync(7);
+        Assert.Equal(30_000m, d.Ozet.KalanAnapara);
+        Assert.Equal(TaksitDurum.Bekliyor, d.Plan[0].Durum);
+        await using (var db = Db())
+            Assert.Equal(-30_000m, await db.CariHareketleri.Where(h => h.CariId == bankaId).SumAsync(h => h.Borc - h.Alacak));
     }
 
     public Task InitializeAsync() => Task.CompletedTask;
