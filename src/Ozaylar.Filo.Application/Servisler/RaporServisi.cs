@@ -50,7 +50,7 @@ public sealed record SoforPerformansSatir(short SoforId, string AdSoyad, int Sef
 
 public sealed record NakitAkisSatir(DateOnly Vade, string Tur, string Karsi, string? Aciklama, decimal Giris, decimal Cikis);
 
-public sealed class RaporServisi(IFiloDbContextFactory factory, IKullaniciOturumu oturum, ISaat saat)
+public sealed class RaporServisi(IFiloDbContextFactory factory, IKullaniciOturumu oturum, ISaat saat, KrediServisi kredi)
 {
     public async Task<List<SeferKarlilikSatir>> SeferKarlilikAsync(DateOnly bas, DateOnly bit, short? aracId = null, int? musteriId = null, CancellationToken ct = default)
     {
@@ -145,9 +145,18 @@ public sealed class RaporServisi(IFiloDbContextFactory factory, IKullaniciOturum
                      .Select(h => new { AracId = h.Sefer!.AracId!.Value, h.Tutar, h.Kur }).ToListAsync(ct))
             if (sonuc.TryGetValue(h.AracId, out var r)) r.Harcirah += Para.TL(h.Tutar, h.Kur);
 
-        foreach (var t in await db.FinansmanTaksitleri.AsNoTracking().Where(t => t.AracFinansman!.AracId != null && t.VadeTarihi >= bas && t.VadeTarihi <= bit)
-                     .Select(t => new { AracId = t.AracFinansman!.AracId!.Value, t.Faiz }).ToListAsync(ct))
-            if (sonuc.TryGetValue(t.AracId, out var r)) r.FinansmanFaizi += t.Faiz;
+        // Finansman gideri: dönemde ÖDENEN faiz+vergi+gecikme+komisyon (ödeme kuruyla TL) + dönemde kullandırılan kredilerin dosya masrafı,
+        // kredinin bağlı olduğu araçlara pay oranında dağıtılır.
+        var krediPay = await db.KrediAraclari.AsNoTracking().Where(a => a.AracId != null)
+            .Select(a => new { a.KrediId, AracId = a.AracId!.Value, a.PayYuzde }).ToListAsync(ct);
+        foreach (var o in await db.KrediOdemeleri.AsNoTracking().Where(o => !o.Iptal && o.Tarih >= bas && o.Tarih <= bit)
+                     .Select(o => new { o.KrediId, Gider = o.Faiz + o.Bsmv + o.Kkdf + o.GecikmeFaizi + o.Komisyon, o.Kur }).ToListAsync(ct))
+            foreach (var p in krediPay.Where(p => p.KrediId == o.KrediId))
+                if (sonuc.TryGetValue(p.AracId, out var r)) r.FinansmanFaizi += Para.TL(o.Gider * p.PayYuzde / 100m, o.Kur);
+        foreach (var k in await db.Krediler.AsNoTracking().Where(k => k.DosyaMasrafi > 0 && k.KullandirimTarihi >= bas && k.KullandirimTarihi <= bit)
+                     .Select(k => new { k.Id, k.DosyaMasrafi, k.KullandirimKur }).ToListAsync(ct))
+            foreach (var p in krediPay.Where(p => p.KrediId == k.Id))
+                if (sonuc.TryGetValue(p.AracId, out var r)) r.FinansmanFaizi += Para.TL(k.DosyaMasrafi * p.PayYuzde / 100m, k.KullandirimKur);
 
         return sonuc.Values.OrderByDescending(r => r.Kar).ToList();
     }
@@ -188,9 +197,12 @@ public sealed class RaporServisi(IFiloDbContextFactory factory, IKullaniciOturum
         foreach (var c in await db.Cezalar.AsNoTracking().Where(c => !c.RucuEdilsin && c.Tarih >= bas && c.Tarih <= bit)
                      .Select(c => new { c.Tarih.Month, T = c.IndirimliTutar ?? c.Tutar }).ToListAsync(ct))
             Ekle(c.Month, gider: c.T);
-        foreach (var t in await db.FinansmanTaksitleri.AsNoTracking().Where(t => t.VadeTarihi >= bas && t.VadeTarihi <= bit)
-                     .Select(t => new { t.VadeTarihi.Month, t.Faiz }).ToListAsync(ct))
-            Ekle(t.Month, gider: t.Faiz);
+        foreach (var o in await db.KrediOdemeleri.AsNoTracking().Where(o => !o.Iptal && o.Tarih >= bas && o.Tarih <= bit)
+                     .Select(o => new { o.Tarih.Month, Gider = o.Faiz + o.Bsmv + o.Kkdf + o.GecikmeFaizi + o.Komisyon, o.Kur }).ToListAsync(ct))
+            Ekle(o.Month, gider: Para.TL(o.Gider, o.Kur));
+        foreach (var k in await db.Krediler.AsNoTracking().Where(k => k.DosyaMasrafi > 0 && k.KullandirimTarihi >= bas && k.KullandirimTarihi <= bit)
+                     .Select(k => new { k.KullandirimTarihi.Month, k.DosyaMasrafi, k.KullandirimKur }).ToListAsync(ct))
+            Ekle(k.Month, gider: Para.TL(k.DosyaMasrafi, k.KullandirimKur));
 
         return aylar.Select(a => new AylikSatir(yil, a.Key, a.Value.Sefer, a.Value.Gelir, a.Value.Gider, a.Value.Taseron)).ToList();
     }
@@ -233,6 +245,7 @@ public sealed class RaporServisi(IFiloDbContextFactory factory, IKullaniciOturum
         oturum.YetkiGerekli(Izinler.RaporFinans);
         await using var db = factory.Olustur();
         var sonuc = new List<NakitAkisSatir>();
+        var bankaUnvanlari = (await db.Krediler.AsNoTracking().Where(k => k.Durum == Domain.Entities.KrediDurum.Aktif).Select(k => k.Banka!.Unvan).Distinct().ToListAsync(ct)).ToHashSet();
         var hareketler = await db.CariHareketleri.AsNoTracking()
             .Where(h => (h.Cari!.CariTipi & CariTipi.Personel) == 0)
             .Select(h => new { h.CariId, h.Cari!.Unvan, Vade = h.VadeTarihi ?? h.Tarih, h.Borc, h.Alacak, h.Aciklama })
@@ -261,9 +274,10 @@ public sealed class RaporServisi(IFiloDbContextFactory factory, IKullaniciOturum
                      .Select(c => new { c.VadeTarihi, c.Yon, c.Tip, c.PortfoyNo, Cari = c.Cari!.Unvan, c.Tutar }).ToListAsync(ct))
             sonuc.Add(new NakitAkisSatir(c.VadeTarihi, $"{c.Yon.Ad()} {c.Tip.Ad()}", c.Cari, c.PortfoyNo,
                 c.Yon == CekSenetYon.Alinan ? c.Tutar : 0, c.Yon == CekSenetYon.Verilen ? c.Tutar : 0));
-        foreach (var t in await db.FinansmanTaksitleri.AsNoTracking().Where(t => t.OdemeTarihi == null && t.VadeTarihi <= bit && t.AracFinansman!.Aktif)
-                     .Select(t => new { t.VadeTarihi, Kurum = t.AracFinansman!.FinansKurumu!.Unvan, t.TaksitNo, t.AracFinansman.SozlesmeNo, t.Toplam }).ToListAsync(ct))
-            sonuc.Add(new NakitAkisSatir(t.VadeTarihi, "Kredi/leasing taksiti", t.Kurum, $"{t.SozlesmeNo} #{t.TaksitNo}", 0, t.Toplam));
+        // Kredi borcu banka carisinde anapara olarak duruyor: çift sayım olmasın diye bankaların cari bakiyesi yukarıda atlanır, taksitler buradan gelir.
+        sonuc.RemoveAll(s => s.Tur == "Cari borcu" && bankaUnvanlari.Contains(s.Karsi));
+        foreach (var t in await kredi.TakvimAsync(DateOnly.MinValue, bit, false, ct))
+            sonuc.Add(new NakitAkisSatir(t.Vade, "Kredi/leasing taksiti", t.Banka, $"{t.KrediNo} #{t.No}{(t.ParaBirimi == ParaBirimi.TRY ? "" : $" ({t.Tutar:N2} {t.PB})")}", 0, t.TutarTL));
         return sonuc.OrderBy(s => s.Vade).ToList();
     }
 }

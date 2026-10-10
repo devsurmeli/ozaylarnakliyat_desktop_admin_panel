@@ -37,7 +37,7 @@ public static class KolonOlusturucu
                 {
                     case KolonBicim.Para: b.StringFormat = "N2"; break;
                     case KolonBicim.Sayi: b.StringFormat = "#,##0.##"; break;
-                    case KolonBicim.Yuzde: b.StringFormat = "%#,##0.0"; break;
+                    case KolonBicim.Yuzde: b.StringFormat = "'%'#,##0.0"; break; // tırnaksız % değeri 100 ile çarpar
                     case KolonBicim.Tarih: b.StringFormat = "dd.MM.yyyy"; break;
                     case KolonBicim.TarihSaat: b.StringFormat = "dd.MM.yyyy HH:mm"; break;
                     default: b.Converter = EnumAdDonusturucu.Ornek; break;

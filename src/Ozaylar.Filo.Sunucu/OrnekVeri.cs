@@ -149,7 +149,7 @@ public static class OrnekVeri
 
             await soforH.AvansVerAsync(new Avans { SoforId = sofor.Id, SeferId = sefer.Id, Tarih = tarih, Tutar = 8_000, KasaHesapId = kasaTl });
             var yz = tarih.ToDateTime(new TimeOnly(7, 0));
-            await gider.YakitKaydetAsync(new Yakit { AracId = arac.Id, SeferId = sefer.Id, AlimZamani = yz, Km = cikisKm + 5, Litre = 420, BirimFiyat = 52.4m, FullDepo = true, OdemeSekli = OdemeSekli.Kart, IstasyonCariId = opet.Id, IstasyonAdi = "Opet" }, true);
+            await gider.YakitKaydetAsync(new Yakit { AracId = arac.Id, SeferId = sefer.Id, AlimZamani = yz, Km = cikisKm + 5, Litre = 60, BirimFiyat = 52.4m, FullDepo = true, OdemeSekli = OdemeSekli.Kart, IstasyonCariId = opet.Id, IstasyonAdi = "Opet" }, true);
             var tuketim = 29 + rnd.Next(0, 6);
             await gider.YakitKaydetAsync(new Yakit { AracId = arac.Id, SeferId = sefer.Id, AlimZamani = yz.AddDays(r.Gun - 1).AddHours(5), Km = cikisKm + r.Km, Litre = Math.Round(r.Km * tuketim / 100m, 0), BirimFiyat = 52.9m, FullDepo = true, OdemeSekli = OdemeSekli.Kart, IstasyonCariId = opet.Id, IstasyonAdi = "Opet" }, true);
             await gider.MasrafKaydetAsync(new Masraf { Tarih = tarih, MasrafTuruId = 3, Merkez = MasrafMerkezi.Sefer, SeferId = sefer.Id, Tutar = 1_850, OdemeSekli = OdemeSekli.SoforNakit, Aciklama = "Otoyol + köprü" });
@@ -220,12 +220,159 @@ public static class OrnekVeri
         });
         await gider.CezaKaydetAsync(new Ceza { Tarih = bugun.AddDays(-25), AracId = araclar[1].Id, SoforId = soforler[1].Id, CezaTuru = "Hız ihlali (%10-30)", Tutar = 2_167, RucuEdilsin = true });
         await gider.MasrafKaydetAsync(new Masraf { Tarih = bugun.AddMonths(-1), MasrafTuruId = 13, Merkez = MasrafMerkezi.Arac, AracId = araclar[0].Id, Tutar = 24_500, OdemeSekli = OdemeSekli.Kasa, KasaHesapId = kasaZiraat, Aciklama = "Trafik sigortası yenileme" });
-        var fin = sp.GetRequiredService<FinansmanServisi>();
-        var fs = new AracFinansman { AracId = araclar[4].Id, Tip = FinansmanTipi.Leasing, FinansKurumuCariId = leasing.Id, SozlesmeNo = "FL-2025-3310", BaslangicTarihi = new DateOnly(2025, 6, 1), AnaparaTutar = 3_200_000, AylikFaizOrani = 2.4m, VadeSayisi = 48 };
-        await fin.KaydetAsync(fs, FinansmanServisi.PlanOner(fs, new DateOnly(2025, 7, 1)));
-        foreach (var t in (await fin.TaksitlerAsync(new DateOnly(2025, 7, 1), bugun.AddMonths(-1), true)).OrderBy(t => t.Vade))
-            await fin.TaksitOdeAsync(t.Id, kasaZiraat, t.Vade);
         _ = hgsCari;
+
+        // ---------------------------------------------------------------- Döviz kurları (TCMB benzeri, aylık)
+        var doviz = sp.GetRequiredService<DovizServisi>();
+        for (var ay = new DateOnly(2024, 9, 1); ay <= bugun; ay = ay.AddMonths(1))
+        {
+            var i = (ay.Year - 2024) * 12 + ay.Month - 9;
+            decimal eur = Math.Round(36.8m + i * 0.45m, 4), usd = Math.Round(33.9m + i * 0.30m, 4);
+            await doviz.KaydetAsync(ay, [(ParaBirimi.EUR, eur - 0.2m, eur), (ParaBirimi.USD, usd - 0.15m, usd)]);
+        }
+        await doviz.KaydetAsync(bugun, [(ParaBirimi.EUR, eurKur - 0.2m, eurKur), (ParaBirimi.USD, 41.4m, 41.6m)]);
+
+        // ---------------------------------------------------------------- Krediler (10 adet: taşıt, leasing, dövizli, eşit anapara, balon, rotatif, kart)
+        var ziraatB = await C("T.C. Ziraat Bankası A.Ş.", CariTipi.Finans);
+        var isB = await C("Türkiye İş Bankası A.Ş.", CariTipi.Finans);
+        var akB = await C("Akbank T.A.Ş.", CariTipi.Finans);
+        var ykB = await C("Yapı ve Kredi Bankası A.Ş.", CariTipi.Finans);
+        var halkB = await C("Türkiye Halk Bankası A.Ş.", CariTipi.Finans);
+        var qnbB = await C("QNB Bank A.Ş.", CariTipi.Finans);
+        var garantiB = await C("Garanti BBVA (Kredi Kartı)", CariTipi.Finans);
+        await using (var db = f.Olustur())
+        {
+            (await db.KasaHesaplari.SingleAsync(k => k.Id == kasaZiraat)).AcilisBakiye = 14_000_000; // kredi ödemelerini karşılayacak örnek bakiye
+            db.BankaLimitleri.Add(new BankaLimit { BankaCariId = ziraatB.Id, LimitTutar = 8_000_000, Teminat = "Araç rehni + kefalet" });
+            db.BankaLimitleri.Add(new BankaLimit { BankaCariId = akB.Id, LimitTutar = 6_000_000, Teminat = "Araç rehni" });
+            db.BankaLimitleri.Add(new BankaLimit { BankaCariId = qnbB.Id, LimitTutar = 750_000, Teminat = "KMH" });
+            await db.SaveChangesAsync();
+        }
+        var kredi = sp.GetRequiredService<KrediServisi>();
+        async Task<decimal> KurAsync(ParaBirimi pb, DateOnly t) => pb == ParaBirimi.TRY ? 1 : await doviz.KurAsync(pb, t) ?? eurKur;
+        async Task<Kredi> K(Kredi k, params short[] aracIdleri) =>
+            await kredi.KaydetAsync(k, null, aracIdleri.Select(a => new KrediArac { AracId = a, PayYuzde = Math.Round(100m / aracIdleri.Length, 2) }).ToList());
+        // Vadesi sonVade tarihine kadar olan taksitleri vadesinde öder (atla: ödenmeyecek taksit vadesi).
+        async Task OdeAsync(Kredi k, DateOnly sonVade, byte kasa, DateOnly? atla = null)
+        {
+            var d = await kredi.DetayAsync(k.Id);
+            foreach (var t in d.Plan.Where(p => p.Durum is TaksitDurum.Bekliyor or TaksitDurum.Kismi && p.Vade <= sonVade).OrderBy(p => p.Vade))
+            {
+                if (t.Vade == atla) continue;
+                await kredi.TaksitOdeAsync(t.Id, t.Vade, kasa, null, 0, await KurAsync(k.ParaBirimi, t.Vade));
+            }
+        }
+        var gecenAy = bugun.AddMonths(-1);
+
+        var k1 = await K(new Kredi
+        {
+            KrediNo = "FL-2025-3310", Tur = KrediTuru.Leasing, BankaCariId = leasing.Id, KullandirimTarihi = new DateOnly(2025, 6, 1), Anapara = 3_200_000,
+            FaizOrani = 2.4m, BsmvOrani = 0, VadeSayisi = 48, IlkVade = new DateOnly(2025, 7, 1), Aciklama = "Ford F-Max leasing",
+        }, araclar[4].Id);
+        await OdeAsync(k1, bugun, kasaZiraat);
+
+        var k2 = await K(new Kredi
+        {
+            KrediNo = "ZB-TK-2024-1101", Tur = KrediTuru.TasitKredisi, BankaCariId = ziraatB.Id, KullandirimTarihi = new DateOnly(2024, 9, 15), Anapara = 2_400_000,
+            FaizOrani = 2.89m, VadeSayisi = 36, IlkVade = new DateOnly(2024, 10, 15), DosyaMasrafi = 12_000,
+        }, araclar[0].Id);
+        await OdeAsync(k2, bugun, kasaZiraat);
+
+        var k3 = await K(new Kredi
+        {
+            KrediNo = "IS-TK-2024-2202", Tur = KrediTuru.TasitKredisi, BankaCariId = isB.Id, KullandirimTarihi = new DateOnly(2024, 11, 10), Anapara = 2_600_000,
+            FaizOrani = 2.75m, VadeSayisi = 36, IlkVade = new DateOnly(2024, 12, 10),
+        }, araclar[1].Id);
+        await OdeAsync(k3, bugun, kasaZiraat);
+
+        var k4 = await K(new Kredi
+        {
+            KrediNo = "AK-EUR-2025-0414", Tur = KrediTuru.DovizeEndeksli, BankaCariId = akB.Id, ParaBirimi = ParaBirimi.EUR, KullandirimTarihi = new DateOnly(2025, 2, 1),
+            KullandirimKur = await KurAsync(ParaBirimi.EUR, new DateOnly(2025, 2, 1)), Anapara = 85_000, FaizOrani = 11.4m, FaizTipi = FaizTipi.Yillik,
+            VadeSayisi = 48, IlkVade = new DateOnly(2025, 3, 1), Aciklama = "Volvo FH — EUR kredi, TL hesaptan kurla ödenir",
+        }, araclar[2].Id);
+        await OdeAsync(k4, bugun, kasaZiraat);
+
+        var k5 = await K(new Kredi
+        {
+            KrediNo = "YK-2025-0120", Tur = KrediTuru.TasitKredisi, BankaCariId = ykB.Id, KullandirimTarihi = new DateOnly(2025, 1, 20), Anapara = 1_800_000,
+            FaizOrani = 3.1m, VadeSayisi = 24, IlkVade = new DateOnly(2025, 2, 20), Yontem = PlanYontemi.EsitAnapara,
+        }, araclar[3].Id);
+        await OdeAsync(k5, bugun, kasaZiraat, atla: (await kredi.DetayAsync(k5.Id)).Plan.Where(p => p.Vade < bugun).Select(p => (DateOnly?)p.Vade).LastOrDefault());
+
+        var k6 = await K(new Kredi
+        {
+            KrediNo = "HB-SPOT-2026-0405", Tur = KrediTuru.Ticari, Amac = KrediAmaci.Isletme, BankaCariId = halkB.Id, KullandirimTarihi = new DateOnly(2026, 4, 5),
+            KullandirimKasaHesapId = kasaZiraat, Anapara = 1_000_000, FaizOrani = 3.25m, VadeSayisi = 12, IlkVade = new DateOnly(2026, 5, 5), DosyaMasrafi = 5_000,
+            Aciklama = "Yakıt ve lastik alımı için işletme kredisi",
+        });
+        await OdeAsync(k6, bugun, kasaZiraat);
+
+        var k7 = await K(new Kredi
+        {
+            KrediNo = "QNB-KMH-01", Tur = KrediTuru.Rotatif, Amac = KrediAmaci.Isletme, BankaCariId = qnbB.Id, KullandirimTarihi = new DateOnly(2026, 8, 1),
+            KullandirimKasaHesapId = kasaZiraat, Anapara = 500_000, FaizOrani = 4.2m, Yontem = PlanYontemi.Manuel, IlkVade = new DateOnly(2026, 9, 1),
+        });
+        await kredi.SerbestOdemeAsync(k7.Id, new DateOnly(2026, 9, 1), kasaZiraat, 100_000, 21_000, 1_050, 0, 1, "Ağustos faizi + kısmi kapama");
+
+        var k8 = await K(new Kredi
+        {
+            KrediNo = "GB-KK-4321", Tur = KrediTuru.KrediKarti, Amac = KrediAmaci.Isletme, BankaCariId = garantiB.Id, KullandirimTarihi = new DateOnly(2026, 9, 1),
+            Anapara = 180_000, FaizOrani = 4.25m, Yontem = PlanYontemi.Manuel, IlkVade = new DateOnly(2026, 9, 25), Aciklama = "Şirket kredi kartı (yakıt, bakım)",
+        });
+        await kredi.SerbestOdemeAsync(k8.Id, new DateOnly(2026, 9, 25), kasaZiraat, 60_000, 0, 0, 0, 1, "Asgari ödeme üstü");
+
+        var k9 = await K(new Kredi
+        {
+            KrediNo = "ZB-BALON-2025-1010", Tur = KrediTuru.Ticari, Amac = KrediAmaci.Isletme, BankaCariId = ziraatB.Id, KullandirimTarihi = new DateOnly(2025, 10, 10),
+            KullandirimKasaHesapId = kasaZiraat, Anapara = 1_500_000, FaizOrani = 2.95m, VadeSayisi = 24, IlkVade = new DateOnly(2025, 11, 10), OdemesizAy = 3,
+            Yontem = PlanYontemi.Balon, BalonTutar = 600_000,
+        });
+        await OdeAsync(k9, bugun, kasaZiraat);
+
+        var k10 = await K(new Kredi
+        {
+            KrediNo = "AK-TK-2025-0415", Tur = KrediTuru.TasitKredisi, BankaCariId = akB.Id, KullandirimTarihi = new DateOnly(2025, 4, 15), Anapara = 2_000_000,
+            FaizOrani = 2.7m, VadeSayisi = 36, IlkVade = new DateOnly(2025, 5, 15), Aciklama = "İki araç ortak kredi; Mart 2026'da 300.000 ara ödeme",
+        }, araclar[0].Id, araclar[1].Id);
+        await OdeAsync(k10, new DateOnly(2026, 3, 19), kasaZiraat);
+        await kredi.AraOdemeAsync(k10.Id, new DateOnly(2026, 3, 20), kasaZiraat, 300_000, YenidenPlanModu.VadeyiKisalt, 1m);
+        await OdeAsync(k10, bugun, kasaZiraat);
+
+        // ---------------------------------------------------------------- Şoför: atama, maaş/prim, EFT, iade, müşteri tahsilatı, zimmet, hakediş
+        await using (var db = f.Olustur())
+        {
+            foreach (var so in await db.Soforler.ToListAsync())
+            {
+                so.MaasTutari = 32_000;
+                so.PrimTipi = so.Ad is "İbrahim" or "Osman" ? PrimTipi.KmBasi : PrimTipi.SeferBasi;
+                so.PrimTutari = so.PrimTipi == PrimTipi.KmBasi ? 1.2m : 1_500;
+                so.BakiyeLimiti = 25_000;
+            }
+            foreach (var (so, i) in soforler.Select((x, i) => (x, i)))
+                db.Zimmetler.Add(new Zimmet { Tur = ZimmetTuru.YakitKarti, Ad = "Opet taşıt kartı", SeriNo = $"7006 1200 00{i:D2}", SoforId = so.Id, AracId = i < araclar.Count ? araclar[i].Id : null, VerilisTarihi = bugun.AddMonths(-3) });
+            foreach (var a in araclar)
+                db.Zimmetler.Add(new Zimmet { Tur = ZimmetTuru.Hgs, Ad = "HGS etiketi", SeriNo = $"HGS-{a.Plaka[^3..]}", AracId = a.Id, VerilisTarihi = bugun.AddMonths(-3) });
+            db.Zimmetler.Add(new Zimmet { Tur = ZimmetTuru.TakografKarti, Ad = "Takograf sürücü kartı", SeriNo = "TR-0099812", SoforId = soforler[0].Id, VerilisTarihi = bugun.AddYears(-1) });
+            db.Zimmetler.Add(new Zimmet { Tur = ZimmetTuru.Telefon, Ad = "Samsung A15 + hat", SoforId = soforler[1].Id, VerilisTarihi = bugun.AddMonths(-8), IadeTarihi = bugun.AddMonths(-1), Durum = ZimmetDurum.IadeEdildi });
+            await db.SaveChangesAsync();
+        }
+        for (var i = 0; i < araclar.Count; i++) await soforH.AracAtaAsync(soforler[i].Id, araclar[i].Id, bugun.AddMonths(-3));
+        await soforH.AracAtaAsync(soforler[5].Id, araclar[4].Id, bugun.AddDays(-21)); // yurtdışı sefer: ikinci şoför
+
+        await soforH.AvansVerAsync(new Avans { SoforId = soforler[0].Id, Tur = AvansTuru.Harclik, Tarih = bugun.AddDays(-2), Tutar = 3_000, KasaHesapId = kasaZiraat, Aciklama = "EFT harçlık" });
+        await soforH.AvansVerAsync(new Avans { SoforId = soforler[2].Id, Tur = AvansTuru.YolParasi, Tarih = bugun, Tutar = 5_000, KasaHesapId = kasaTl, Aciklama = "Mersin dönüşü yol parası" });
+        await soforH.AvansVerAsync(new Avans { SoforId = soforler[1].Id, SeferId = acikSeferler[0].Id, Tarih = bugun, Tutar = 7_500, KasaHesapId = kasaTl });
+        await soforH.ParaAlAsync(soforler[2].Id, SoforHesapServisi.ParaAlTuru.Iade, bugun, 1_250, kasaTl, null, null, null, "Kullanılmayan yol parası iadesi");
+        await soforH.ParaAlAsync(soforler[3].Id, SoforHesapServisi.ParaAlTuru.MusteriTahsilati, bugun.AddDays(-1), 18_000, null, mEge.Id, null, null, "Teslimatta nakit navlun");
+        await soforH.ParaAlAsync(soforler[0].Id, SoforHesapServisi.ParaAlTuru.MusteriTahsilati, bugun, 12_000, kasaTl, mAnadolu.Id, null, null, "Tahsil edip kasaya teslim etti");
+
+        var donem = gecenAy.Year * 100 + gecenAy.Month;
+        var oneriler = await soforH.HakedisOnerAsync(donem);
+        await soforH.TahakkukYazAsync(donem, oneriler.Select(o => new PersonelTahakkuk { SoforId = o.SoforId, Tur = o.Tur, Tutar = o.Tutar, SeferId = o.SeferId, AracId = o.AracId, Aciklama = o.Aciklama }).ToList());
+        await soforH.TahakkukYazAsync(donem, [new PersonelTahakkuk { SoforId = soforler[1].Id, Tur = TahakkukTuru.Kesinti, Tutar = 2_167, Aciklama = "Hız cezası kesintisi" }]);
+        foreach (var so in soforler.Take(4))
+            await soforH.AvansVerAsync(new Avans { SoforId = so.Id, Tur = AvansTuru.MaasOdemesi, Tarih = bugun.AddDays(-bugun.Day + 5), Tutar = 32_000, KasaHesapId = kasaZiraat, Aciklama = $"{gecenAy:MMMM} maaşı (EFT)" });
     }
 
     private static async Task<int> AracKmAsync(IFiloDbContextFactory f, short aracId)

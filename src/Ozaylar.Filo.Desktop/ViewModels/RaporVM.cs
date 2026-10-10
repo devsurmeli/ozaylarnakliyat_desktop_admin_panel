@@ -11,6 +11,11 @@ using Ozaylar.Filo.Desktop.Altyapi;
 
 namespace Ozaylar.Filo.Desktop.ViewModels;
 
+public sealed record HakedisOzetSatir(string Donem, string Sofor, decimal Maas, decimal Prim, decimal Ek, decimal Kesinti)
+{
+    public decimal Net => Maas + Prim + Ek - Kesinti;
+}
+
 public sealed record RaporTanimi(string Ad, string Aciklama, string Izin, IReadOnlyList<Kolon> Kolonlar, Func<DateOnly, DateOnly, Task<IEnumerable>> Getir, Func<IEnumerable, string?>? Ozet = null)
 {
     public override string ToString() => Ad;
@@ -30,7 +35,8 @@ public sealed partial class RaporVM : ObservableObject
 
     public event Action<IReadOnlyList<Kolon>>? KolonlarDegisti;
 
-    public RaporVM(RaporServisi rapor, GiderServisi gider, FinansServisi finans, FaturaServisi fatura, IKullaniciOturumu oturum, IDisaAktarici disa)
+    public RaporVM(RaporServisi rapor, GiderServisi gider, FinansServisi finans, FaturaServisi fatura, KrediServisi kredi, SoforHesapServisi soforHesap,
+        IKullaniciOturumu oturum, IDisaAktarici disa)
     {
         _disa = disa;
         static string Tl(decimal d) => $"{d:N2} TL";
@@ -106,6 +112,46 @@ public sealed partial class RaporVM : ObservableObject
                 new("Güzergah", nameof(FaturalanmamisSefer.Guzergah)), new("Plaka", nameof(FaturalanmamisSefer.Plaka)), Kolon.Para("Navlun", nameof(FaturalanmamisSefer.Navlun)), new("PB", nameof(FaturalanmamisSefer.PB)),
             ],
             async (_, _) => await fatura.FaturalanmamisSeferlerAsync()),
+
+            new("Kredi ödemeleri / finansman gideri", "Dönemde yapılan tüm kredi, leasing, rotatif ve kart ödemeleri: anapara, faiz, vergi ayrımı ve ödeme günü kuruyla TL karşılığı.", Izinler.FinansmanGor,
+            [
+                Kolon.Tarih("Tarih", nameof(KrediOdemeRaporSatir.Tarih)), new("Banka", nameof(KrediOdemeRaporSatir.Banka), Genislik: 180), new("Kredi No", nameof(KrediOdemeRaporSatir.KrediNo)),
+                new("Kredi Türü", nameof(KrediOdemeRaporSatir.KrediTuruAd)), new("Ödeme", nameof(KrediOdemeRaporSatir.TurAd)), new("PB", nameof(KrediOdemeRaporSatir.PB)),
+                Kolon.Para("Anapara", nameof(KrediOdemeRaporSatir.Anapara), false), Kolon.Para("Faiz", nameof(KrediOdemeRaporSatir.Faiz), false),
+                Kolon.Para("BSMV+KKDF", nameof(KrediOdemeRaporSatir.Vergi), false), Kolon.Para("Gecikme+Kom.", nameof(KrediOdemeRaporSatir.GecikmeKomisyon), false),
+                new("Kur", nameof(KrediOdemeRaporSatir.Kur), Application.Abstractions.KolonBicim.Sayi), Kolon.Para("Anapara TL", nameof(KrediOdemeRaporSatir.AnaparaTL)),
+                Kolon.Para("Finansman Gideri TL", nameof(KrediOdemeRaporSatir.GiderTL)), Kolon.Para("Ödenen TL", nameof(KrediOdemeRaporSatir.TutarTL)),
+            ],
+            async (b, e) => await kredi.OdemelerAsync(b, e),
+            v => { var l = v.Cast<KrediOdemeRaporSatir>().ToList(); return $"Ödenen {Tl(l.Sum(x => x.TutarTL))}  •  Anapara {Tl(l.Sum(x => x.AnaparaTL))}  •  Finansman gideri {Tl(l.Sum(x => x.GiderTL))}"; }),
+
+            new("Banka bazında kredi riski", "Aktif kredilerin bankalara göre kalan anaparası, bu ayki taksitleri ve tanımlı limitleri (TL, bugünkü kur). Tarih aralığından bağımsızdır.", Izinler.FinansmanGor,
+            [
+                new("Banka", nameof(BankaRiskSatir.Banka), Genislik: 240), Kolon.Sayi("Kredi", nameof(BankaRiskSatir.KrediSayisi), true),
+                Kolon.Para("Kalan Anapara (TL)", nameof(BankaRiskSatir.KalanAnaparaTL)), Kolon.Para("Bu Ay Taksit (TL)", nameof(BankaRiskSatir.BuAyTaksitTL)),
+                Kolon.Para("Limit (TL)", nameof(BankaRiskSatir.LimitTL)), Kolon.Para("Boş Limit (TL)", nameof(BankaRiskSatir.BosLimitTL)),
+            ],
+            async (_, _) => (await kredi.GenelOzetAsync()).Bankalar),
+
+            new("Şoför hakediş özeti", "Seçilen aylar için şoför bazında maaş, prim, ek ödeme ve kesintiler (iç hakediş takibi).", Izinler.SoforHesapGor,
+            [
+                new("Dönem", nameof(HakedisOzetSatir.Donem)), new("Şoför", nameof(HakedisOzetSatir.Sofor), Genislik: 180), Kolon.Para("Maaş", nameof(HakedisOzetSatir.Maas)),
+                Kolon.Para("Prim", nameof(HakedisOzetSatir.Prim)), Kolon.Para("Ek", nameof(HakedisOzetSatir.Ek)), Kolon.Para("Kesinti", nameof(HakedisOzetSatir.Kesinti)),
+                Kolon.Para("Net Hakediş", nameof(HakedisOzetSatir.Net)),
+            ],
+            async (b, e) =>
+            {
+                int db = b.Year * 100 + b.Month, de = e.Year * 100 + e.Month;
+                return (await soforHesap.TahakkuklarAsync(null, null)).Where(t => !t.Iptal && t.Donem >= db && t.Donem <= de)
+                    .GroupBy(t => (t.Donem, t.DonemAd, t.Sofor)).OrderBy(g => g.Key.Donem).ThenBy(g => g.Key.Sofor)
+                    .Select(g => new HakedisOzetSatir(g.Key.DonemAd, g.Key.Sofor,
+                        g.Where(t => t.Tur == Domain.Entities.TahakkukTuru.Maas).Sum(t => t.Tutar),
+                        g.Where(t => t.Tur is Domain.Entities.TahakkukTuru.SeferPrimi or Domain.Entities.TahakkukTuru.KmPrimi).Sum(t => t.Tutar),
+                        g.Where(t => t.Tur == Domain.Entities.TahakkukTuru.Ek).Sum(t => t.Tutar),
+                        g.Where(t => t.Tur == Domain.Entities.TahakkukTuru.Kesinti).Sum(t => t.Tutar)))
+                    .ToList();
+            },
+            v => $"Net hakediş toplamı {Tl(v.Cast<HakedisOzetSatir>().Sum(x => x.Net))}"),
         };
         Raporlar = tumu.Where(r => oturum.Yetkili(r.Izin)).ToList();
         _secili = Raporlar.FirstOrDefault();

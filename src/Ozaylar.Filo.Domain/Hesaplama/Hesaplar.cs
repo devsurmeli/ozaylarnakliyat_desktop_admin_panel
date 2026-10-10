@@ -134,32 +134,6 @@ public static class AmortismanHesap
     private static int AyIndeksi(DateOnly t) => t.Year * 12 + t.Month - 1;
 }
 
-public record TaksitSatiri(short TaksitNo, DateOnly Vade, decimal Anapara, decimal Faiz, decimal Toplam, decimal KalanAnapara);
-
-public static class TaksitPlani
-{
-    /// <summary>Eşit taksitli (annüite) ödeme planı. Faiz oranı aylık yüzde. Son taksit yuvarlama farkını kapatır.</summary>
-    public static List<TaksitSatiri> Olustur(decimal anapara, decimal aylikFaizYuzde, short vadeSayisi, DateOnly ilkVade)
-    {
-        if (anapara <= 0) throw new DomainException("Anapara sıfırdan büyük olmalıdır.");
-        if (vadeSayisi <= 0) throw new DomainException("Vade sayısı sıfırdan büyük olmalıdır.");
-        var r = aylikFaizYuzde / 100m;
-        decimal taksit = r == 0
-            ? Para.Yuvarla(anapara / vadeSayisi)
-            : Para.Yuvarla(anapara * r / (1 - (decimal)Math.Pow((double)(1 + r), -vadeSayisi)));
-
-        var liste = new List<TaksitSatiri>(vadeSayisi);
-        var kalan = anapara;
-        for (short i = 1; i <= vadeSayisi; i++)
-        {
-            var faiz = Para.Yuvarla(kalan * r);
-            var ana = i == vadeSayisi ? kalan : taksit - faiz;
-            kalan -= ana;
-            liste.Add(new TaksitSatiri(i, ilkVade.AddMonths(i - 1), ana, faiz, ana + faiz, kalan));
-        }
-        return liste;
-    }
-}
 
 public record YaslandirmaSonuc(decimal VadesiGelmemis, decimal Gun0_30, decimal Gun31_60, decimal Gun61_90, decimal Gun90Ustu)
 {

@@ -175,6 +175,7 @@ public sealed class IceAktarmaServisi(IFiloDbContextFactory factory, IKullaniciO
                 {
                     var arac = await db.Araclar.SingleAsync(a => a.Id == aracId, ct);
                     if (y.Km > arac.GuncelKm) arac.GuncelKm = y.Km;
+                    AracKm.Kaydet(db, aracId, y.AlimZamani, y.Km, KmKaynak.Ekstre, null);
                 }
             }
             else

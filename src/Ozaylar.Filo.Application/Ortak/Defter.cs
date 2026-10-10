@@ -14,7 +14,8 @@ public static class Defter
 {
     /// <summary>Cari satırı. Tutar belge para birimindedir; TL karşılığı kur ile hesaplanır.</summary>
     public static CariHareket Cari(IFiloDbContext db, int cariId, DateOnly tarih, decimal borc, decimal alacak,
-        KaynakTip kaynak, int? kaynakId, string? aciklama, ParaBirimi pb = ParaBirimi.TRY, decimal kur = 1m, DateOnly? vade = null)
+        KaynakTip kaynak, int? kaynakId, string? aciklama, ParaBirimi pb = ParaBirimi.TRY, decimal kur = 1m, DateOnly? vade = null,
+        short? aracId = null, int? seferId = null)
     {
         if (borc < 0 || alacak < 0) throw new DomainException("Defter tutarları negatif olamaz.");
         var dovizli = pb != ParaBirimi.TRY;
@@ -33,6 +34,8 @@ public static class Defter
             KaynakTip = kaynak,
             KaynakId = kaynakId,
             Aciklama = Kisalt(aciklama),
+            AracId = aracId,
+            SeferId = seferId,
         };
         db.CariHareketleri.Add(h);
         return h;
@@ -73,7 +76,7 @@ public static class Defter
                 CariId = h.CariId, Tarih = tarih, VadeTarihi = h.VadeTarihi,
                 Borc = h.Alacak, Alacak = h.Borc, ParaBirimi = h.ParaBirimi, Kur = h.Kur,
                 DovizBorc = h.DovizAlacak, DovizAlacak = h.DovizBorc,
-                KaynakTip = kaynak, KaynakId = kaynakId, TersKayitId = h.Id,
+                KaynakTip = kaynak, KaynakId = kaynakId, TersKayitId = h.Id, AracId = h.AracId, SeferId = h.SeferId,
                 Aciklama = Kisalt($"İPTAL ({neden}): {h.Aciklama}"),
             });
         }

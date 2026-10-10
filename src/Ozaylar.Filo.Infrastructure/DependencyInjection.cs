@@ -22,6 +22,7 @@ public static class DependencyInjection
         s.AddSingleton<IExcelOkuyucu, ExcelOkuyucu>();
         s.AddSingleton<IDisaAktarici>(_ => new DisaAktarici());
         s.AddSingleton<SemaKontrol>();
+        s.AddSingleton<IBelgeUretici, BelgeUretici>();
         return s;
     }
 }

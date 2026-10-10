@@ -69,8 +69,15 @@ public partial class FiloDbContext : DbContext, IFiloDbContext
     public DbSet<BakimKalem> BakimKalemleri => Set<BakimKalem>();
     public DbSet<Lastik> Lastikler => Set<Lastik>();
     public DbSet<LastikHareket> LastikHareketleri => Set<LastikHareket>();
-    public DbSet<AracFinansman> AracFinansmanlari => Set<AracFinansman>();
-    public DbSet<FinansmanTaksit> FinansmanTaksitleri => Set<FinansmanTaksit>();
+    public DbSet<Kredi> Krediler => Set<Kredi>();
+    public DbSet<KrediTaksit> KrediTaksitleri => Set<KrediTaksit>();
+    public DbSet<KrediOdeme> KrediOdemeleri => Set<KrediOdeme>();
+    public DbSet<KrediArac> KrediAraclari => Set<KrediArac>();
+    public DbSet<BankaLimit> BankaLimitleri => Set<BankaLimit>();
+    public DbSet<SoforAracAtama> SoforAracAtamalari => Set<SoforAracAtama>();
+    public DbSet<Zimmet> Zimmetler => Set<Zimmet>();
+    public DbSet<PersonelTahakkuk> PersonelTahakkuklari => Set<PersonelTahakkuk>();
+    public DbSet<AracKmKayit> AracKmKayitlari => Set<AracKmKayit>();
     public DbSet<Evrak> Evraklar => Set<Evrak>();
     public DbSet<Ek> Ekler => Set<Ek>();
 
@@ -147,7 +154,8 @@ public partial class FiloDbContext : DbContext, IFiloDbContext
         (typeof(SeferDurak), typeof(Sefer)),
         (typeof(RolIzin), typeof(Rol)),
         (typeof(KullaniciRol), typeof(Kullanici)),
-        (typeof(FinansmanTaksit), typeof(AracFinansman)),
+        (typeof(KrediTaksit), typeof(Kredi)),
+        (typeof(KrediArac), typeof(Kredi)),
         (typeof(CekSenetHareket), typeof(CekSenet)),
         (typeof(LastikHareket), typeof(Lastik)),
     ];

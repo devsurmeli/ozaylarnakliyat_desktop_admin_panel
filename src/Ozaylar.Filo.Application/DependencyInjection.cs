@@ -43,11 +43,13 @@ public static class DependencyInjection
         s.AddSingleton<IceAktarmaServisi>();
         s.AddSingleton<BakimServisi>();
         s.AddSingleton<LastikServisi>();
-        s.AddSingleton<FinansmanServisi>();
         s.AddSingleton<CekSenetServisi>();
         s.AddSingleton<EkServisi>();
         s.AddSingleton<RaporServisi>();
         s.AddSingleton<PanelServisi>();
+        s.AddSingleton<KrediServisi>();
+        s.AddSingleton<UyariServisi>();
+        s.AddSingleton<DetayServisi>();
         return s;
     }
 }

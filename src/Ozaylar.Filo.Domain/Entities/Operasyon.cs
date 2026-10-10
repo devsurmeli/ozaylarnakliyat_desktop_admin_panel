@@ -146,6 +146,8 @@ public class Ceza : Kayit<int>, IDonemKilitli
 public class Avans : Kayit<int>, IDonemKilitli
 {
     public short SoforId { get; set; }
+    public AvansTuru Tur { get; set; } = AvansTuru.Avans;
+    public short? AracId { get; set; }
     public int? SeferId { get; set; }
     public DateOnly Tarih { get; set; }
     public decimal Tutar { get; set; }
@@ -158,11 +160,13 @@ public class Avans : Kayit<int>, IDonemKilitli
 
     public Sofor? Sofor { get; set; }
     public Sefer? Sefer { get; set; }
+    public Arac? Arac { get; set; }
 }
 
 public class Harcirah : Kayit<int>, IDonemKilitli
 {
     public short SoforId { get; set; }
+    public short? AracId { get; set; }
     public int? SeferId { get; set; }
     public short? UlkeId { get; set; }
     public DateOnly Baslangic { get; set; }

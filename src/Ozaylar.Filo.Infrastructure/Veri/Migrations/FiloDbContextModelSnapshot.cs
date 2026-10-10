@@ -196,86 +196,34 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.AracFinansman", b =>
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.AracKmKayit", b =>
                 {
-                    b.Property<short>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("smallint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<short>("Id"));
-
-                    b.Property<string>("Aciklama")
-                        .HasMaxLength(300)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(300)");
-
-                    b.Property<bool>("Aktif")
-                        .HasColumnType("bit");
-
-                    b.Property<decimal>("AnaparaTutar")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<short?>("AracId")
-                        .HasColumnType("smallint");
-
-                    b.Property<decimal>("AylikFaizOrani")
-                        .HasPrecision(7, 4)
-                        .HasColumnType("decimal(7,4)");
-
-                    b.Property<DateOnly>("BaslangicTarihi")
-                        .HasColumnType("date");
-
-                    b.Property<short?>("DorseId")
-                        .HasColumnType("smallint");
-
-                    b.Property<int>("FinansKurumuCariId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("GuncellemeTarihi")
-                        .HasColumnType("datetime2(0)");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<short?>("GuncelleyenId")
+                    b.Property<short>("AracId")
                         .HasColumnType("smallint");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<short?>("OlusturanId")
-                        .HasColumnType("smallint");
-
-                    b.Property<DateTime>("OlusturmaTarihi")
-                        .HasColumnType("datetime2(0)");
-
-                    b.Property<byte>("ParaBirimi")
+                    b.Property<byte>("Kaynak")
                         .HasColumnType("tinyint");
 
-                    b.Property<byte[]>("RowVer")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                    b.Property<int?>("KaynakId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("SozlesmeNo")
-                        .HasMaxLength(40)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(40)");
+                    b.Property<int>("Km")
+                        .HasColumnType("int");
 
-                    b.Property<byte>("Tip")
-                        .HasColumnType("tinyint");
-
-                    b.Property<short>("VadeSayisi")
-                        .HasColumnType("smallint");
+                    b.Property<DateTime>("Zaman")
+                        .HasColumnType("datetime2(0)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AracId");
+                    b.HasIndex("AracId", "Zaman");
 
-                    b.HasIndex("DorseId");
-
-                    b.HasIndex("FinansKurumuCariId");
-
-                    b.ToTable("AracFinansman", (string)null);
+                    b.ToTable("AracKmKayit", (string)null);
                 });
 
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.AuditLog", b =>
@@ -334,6 +282,9 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(200)");
 
+                    b.Property<short?>("AracId")
+                        .HasColumnType("smallint");
+
                     b.Property<DateTime?>("GuncellemeTarihi")
                         .HasColumnType("datetime2(0)");
 
@@ -377,11 +328,16 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Property<DateOnly>("Tarih")
                         .HasColumnType("date");
 
+                    b.Property<byte>("Tur")
+                        .HasColumnType("tinyint");
+
                     b.Property<decimal>("Tutar")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AracId");
 
                     b.HasIndex("KasaHesapId");
 
@@ -667,6 +623,57 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.BankaLimit", b =>
+                {
+                    b.Property<short>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<short>("Id"));
+
+                    b.Property<int>("BankaCariId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("GecerlilikBitis")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<short?>("GuncelleyenId")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("LimitTutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<short?>("OlusturanId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<byte>("ParaBirimi")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte[]>("RowVer")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Teminat")
+                        .HasMaxLength(300)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BankaCariId");
+
+                    b.ToTable("BankaLimit", (string)null);
+                });
+
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Cari", b =>
                 {
                     b.Property<int>("Id")
@@ -808,6 +815,9 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<short?>("AracId")
+                        .HasColumnType("smallint");
+
                     b.Property<decimal>("Borc")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -842,6 +852,9 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Property<byte>("ParaBirimi")
                         .HasColumnType("tinyint");
 
+                    b.Property<int?>("SeferId")
+                        .HasColumnType("int");
+
                     b.Property<DateOnly>("Tarih")
                         .HasColumnType("date");
 
@@ -853,8 +866,14 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("SeferId")
+                        .HasFilter("[SeferId] IS NOT NULL");
+
                     b.HasIndex("TersKayitId")
                         .HasFilter("[TersKayitId] IS NOT NULL");
+
+                    b.HasIndex("AracId", "Tarih")
+                        .HasFilter("[AracId] IS NOT NULL");
 
                     b.HasIndex("CariId", "Tarih");
 
@@ -1768,71 +1787,6 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.ToTable("FaturaKalem", (string)null);
                 });
 
-            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.FinansmanTaksit", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Anapara")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<short>("AracFinansmanId")
-                        .HasColumnType("smallint");
-
-                    b.Property<decimal>("Faiz")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("GuncellemeTarihi")
-                        .HasColumnType("datetime2(0)");
-
-                    b.Property<short?>("GuncelleyenId")
-                        .HasColumnType("smallint");
-
-                    b.Property<byte?>("OdemeKasaHesapId")
-                        .HasColumnType("tinyint");
-
-                    b.Property<DateOnly?>("OdemeTarihi")
-                        .HasColumnType("date");
-
-                    b.Property<short?>("OlusturanId")
-                        .HasColumnType("smallint");
-
-                    b.Property<DateTime>("OlusturmaTarihi")
-                        .HasColumnType("datetime2(0)");
-
-                    b.Property<byte[]>("RowVer")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<short>("TaksitNo")
-                        .HasColumnType("smallint");
-
-                    b.Property<decimal>("Toplam")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateOnly>("VadeTarihi")
-                        .HasColumnType("date");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OdemeKasaHesapId");
-
-                    b.HasIndex("AracFinansmanId", "TaksitNo")
-                        .IsUnique();
-
-                    b.HasIndex("VadeTarihi", "OdemeTarihi");
-
-                    b.ToTable("FinansmanTaksit", (string)null);
-                });
-
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Guzergah", b =>
                 {
                     b.Property<short>("Id")
@@ -1915,6 +1869,9 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         .HasMaxLength(200)
                         .IsUnicode(false)
                         .HasColumnType("varchar(200)");
+
+                    b.Property<short?>("AracId")
+                        .HasColumnType("smallint");
 
                     b.Property<DateOnly>("Baslangic")
                         .HasColumnType("date");
@@ -2803,6 +2760,336 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.ToTable("KasaHesap", (string)null);
                 });
 
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Kredi", b =>
+                {
+                    b.Property<short>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<short>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<byte>("AktifVersiyon")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte>("Amac")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("Anapara")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("BalonTutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("BankaCariId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("BsmvOrani")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<decimal>("DosyaMasrafi")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<byte>("Durum")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("FaizOrani")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<byte>("FaizTipi")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("GecikmeArtisYuzde")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<short?>("GuncelleyenId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateOnly>("IlkVade")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateOnly?>("KapanisTarihi")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("KkdfOrani")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("KrediNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<byte?>("KullandirimKasaHesapId")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("KullandirimKur")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateOnly>("KullandirimTarihi")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("OdemesizAy")
+                        .HasColumnType("tinyint");
+
+                    b.Property<short?>("OlusturanId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<byte>("ParaBirimi")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte[]>("RowVer")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<byte>("Tur")
+                        .HasColumnType("tinyint");
+
+                    b.Property<short>("VadeSayisi")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("Yontem")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KullandirimKasaHesapId");
+
+                    b.HasIndex("BankaCariId", "Durum");
+
+                    b.ToTable("Kredi", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Kredi_Anapara", "[Anapara] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.KrediArac", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<short?>("AracId")
+                        .HasColumnType("smallint");
+
+                    b.Property<short?>("DorseId")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("KrediId")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("PayYuzde")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AracId")
+                        .HasFilter("[AracId] IS NOT NULL");
+
+                    b.HasIndex("DorseId");
+
+                    b.HasIndex("KrediId");
+
+                    b.ToTable("KrediArac", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_KrediArac_Hedef", "([AracId] IS NOT NULL AND [DorseId] IS NULL) OR ([AracId] IS NULL AND [DorseId] IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.KrediOdeme", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<decimal>("Anapara")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Bsmv")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Faiz")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("GecikmeFaizi")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("Iptal")
+                        .HasColumnType("bit");
+
+                    b.Property<byte>("KasaHesapId")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("KasaTutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Kkdf")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Komisyon")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<short>("KrediId")
+                        .HasColumnType("smallint");
+
+                    b.Property<int?>("KrediTaksitId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Kur")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<short?>("OlusturanId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<DateOnly>("Tarih")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Tur")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("Tutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KasaHesapId");
+
+                    b.HasIndex("KrediTaksitId");
+
+                    b.HasIndex("Tarih");
+
+                    b.HasIndex("KrediId", "Tarih");
+
+                    b.ToTable("KrediOdeme", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_KrediOdeme_Tutar", "[Tutar] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.KrediTaksit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Anapara")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Bsmv")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<byte>("Durum")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("Faiz")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<short?>("GuncelleyenId")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("KalanAnapara")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Kkdf")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<short>("KrediId")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("OdenenTutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<short?>("OlusturanId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<byte[]>("RowVer")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<short>("TaksitNo")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("Toplam")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateOnly>("VadeTarihi")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Versiyon")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VadeTarihi", "Durum");
+
+                    b.HasIndex("KrediId", "Versiyon", "TaksitNo")
+                        .IsUnique();
+
+                    b.ToTable("KrediTaksit", (string)null);
+                });
+
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Kullanici", b =>
                 {
                     b.Property<short>("Id")
@@ -3584,6 +3871,76 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.PersonelTahakkuk", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<short?>("AracId")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Donem")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<short?>("GuncelleyenId")
+                        .HasColumnType("smallint");
+
+                    b.Property<bool>("Iptal")
+                        .HasColumnType("bit");
+
+                    b.Property<short?>("OlusturanId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<byte[]>("RowVer")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int?>("SeferId")
+                        .HasColumnType("int");
+
+                    b.Property<short>("SoforId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateOnly>("Tarih")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Tur")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("Tutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AracId");
+
+                    b.HasIndex("SeferId");
+
+                    b.HasIndex("SoforId", "Donem");
+
+                    b.ToTable("PersonelTahakkuk", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PersonelTahakkuk_Tutar", "[Tutar] > 0");
+                        });
+                });
+
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Rol", b =>
                 {
                     b.Property<byte>("Id")
@@ -3913,6 +4270,10 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Property<bool>("Aktif")
                         .HasColumnType("bit");
 
+                    b.Property<decimal?>("BakiyeLimiti")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("CariId")
                         .HasColumnType("int");
 
@@ -3954,6 +4315,10 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Property<DateOnly?>("IstenCikis")
                         .HasColumnType("date");
 
+                    b.Property<decimal?>("MaasTutari")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Notlar")
                         .HasMaxLength(500)
                         .IsUnicode(false)
@@ -3964,6 +4329,13 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
 
                     b.Property<DateTime>("OlusturmaTarihi")
                         .HasColumnType("datetime2(0)");
+
+                    b.Property<byte>("PrimTipi")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal?>("PrimTutari")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<byte[]>("RowVer")
                         .IsConcurrencyToken()
@@ -4004,6 +4376,56 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.HasIndex("VarsayilanAracId");
 
                     b.ToTable("Sofor", (string)null);
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.SoforAracAtama", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<short>("AracId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateOnly>("Baslangic")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("Bitis")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<short?>("GuncelleyenId")
+                        .HasColumnType("smallint");
+
+                    b.Property<short?>("OlusturanId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<byte[]>("RowVer")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<short>("SoforId")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AracId", "Baslangic");
+
+                    b.HasIndex("SoforId", "Baslangic");
+
+                    b.ToTable("SoforAracAtama", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SoforAracAtama_Tarih", "[Bitis] IS NULL OR [Bitis] >= [Baslangic]");
+                        });
                 });
 
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Ulke", b =>
@@ -4485,6 +4907,82 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Zimmet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(300)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<short?>("AracId")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal?>("Deger")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<byte>("Durum")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<short?>("GuncelleyenId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateOnly?>("IadeTarihi")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<short?>("OlusturanId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<byte[]>("RowVer")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("SeriNo")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<short?>("SoforId")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("Tur")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateOnly>("VerilisTarihi")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AracId");
+
+                    b.HasIndex("SoforId", "Durum");
+
+                    b.ToTable("Zimmet", (string)null);
+                });
+
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.AracDorseEslesme", b =>
                 {
                     b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
@@ -4504,31 +5002,23 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Navigation("Dorse");
                 });
 
-            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.AracFinansman", b =>
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.AracKmKayit", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
+                        .WithMany()
+                        .HasForeignKey("AracId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Arac");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Avans", b =>
                 {
                     b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
                         .WithMany()
                         .HasForeignKey("AracId");
 
-                    b.HasOne("Ozaylar.Filo.Domain.Entities.Dorse", "Dorse")
-                        .WithMany()
-                        .HasForeignKey("DorseId");
-
-                    b.HasOne("Ozaylar.Filo.Domain.Entities.Cari", "FinansKurumu")
-                        .WithMany()
-                        .HasForeignKey("FinansKurumuCariId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Arac");
-
-                    b.Navigation("Dorse");
-
-                    b.Navigation("FinansKurumu");
-                });
-
-            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Avans", b =>
-                {
                     b.HasOne("Ozaylar.Filo.Domain.Entities.KasaHesap", null)
                         .WithMany()
                         .HasForeignKey("KasaHesapId")
@@ -4548,6 +5038,8 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                         .HasForeignKey("SoforId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Arac");
 
                     b.Navigation("Sefer");
 
@@ -4605,6 +5097,17 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Navigation("Arac");
 
                     b.Navigation("Dorse");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.BankaLimit", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Cari", "Banka")
+                        .WithMany()
+                        .HasForeignKey("BankaCariId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Banka");
                 });
 
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Cari", b =>
@@ -4741,21 +5244,6 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Navigation("Sefer");
                 });
 
-            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.FinansmanTaksit", b =>
-                {
-                    b.HasOne("Ozaylar.Filo.Domain.Entities.AracFinansman", "AracFinansman")
-                        .WithMany("Taksitler")
-                        .HasForeignKey("AracFinansmanId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Ozaylar.Filo.Domain.Entities.KasaHesap", null)
-                        .WithMany()
-                        .HasForeignKey("OdemeKasaHesapId");
-
-                    b.Navigation("AracFinansman");
-                });
-
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Guzergah", b =>
                 {
                     b.HasOne("Ozaylar.Filo.Domain.Entities.Lokasyon", "CikisLokasyon")
@@ -4856,6 +5344,74 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Navigation("Cari");
 
                     b.Navigation("KasaHesap");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Kredi", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Cari", "Banka")
+                        .WithMany()
+                        .HasForeignKey("BankaCariId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.KasaHesap", null)
+                        .WithMany()
+                        .HasForeignKey("KullandirimKasaHesapId");
+
+                    b.Navigation("Banka");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.KrediArac", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
+                        .WithMany()
+                        .HasForeignKey("AracId");
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Dorse", "Dorse")
+                        .WithMany()
+                        .HasForeignKey("DorseId");
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Kredi", null)
+                        .WithMany("Araclar")
+                        .HasForeignKey("KrediId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Arac");
+
+                    b.Navigation("Dorse");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.KrediOdeme", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.KasaHesap", null)
+                        .WithMany()
+                        .HasForeignKey("KasaHesapId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Kredi", "Kredi")
+                        .WithMany()
+                        .HasForeignKey("KrediId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.KrediTaksit", null)
+                        .WithMany()
+                        .HasForeignKey("KrediTaksitId");
+
+                    b.Navigation("Kredi");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.KrediTaksit", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Kredi", "Kredi")
+                        .WithMany("Taksitler")
+                        .HasForeignKey("KrediId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Kredi");
                 });
 
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.KullaniciRol", b =>
@@ -4980,6 +5536,29 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Navigation("Dorse");
 
                     b.Navigation("MasrafTuru");
+
+                    b.Navigation("Sefer");
+
+                    b.Navigation("Sofor");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.PersonelTahakkuk", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
+                        .WithMany()
+                        .HasForeignKey("AracId");
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Sefer", "Sefer")
+                        .WithMany()
+                        .HasForeignKey("SeferId");
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Sofor", "Sofor")
+                        .WithMany()
+                        .HasForeignKey("SoforId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Arac");
 
                     b.Navigation("Sefer");
 
@@ -5113,6 +5692,25 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Navigation("VarsayilanArac");
                 });
 
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.SoforAracAtama", b =>
+                {
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
+                        .WithMany()
+                        .HasForeignKey("AracId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Sofor", "Sofor")
+                        .WithMany()
+                        .HasForeignKey("SoforId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Arac");
+
+                    b.Navigation("Sofor");
+                });
+
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Yakit", b =>
                 {
                     b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
@@ -5144,9 +5742,19 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
                     b.Navigation("Sofor");
                 });
 
-            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.AracFinansman", b =>
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Zimmet", b =>
                 {
-                    b.Navigation("Taksitler");
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Arac", "Arac")
+                        .WithMany()
+                        .HasForeignKey("AracId");
+
+                    b.HasOne("Ozaylar.Filo.Domain.Entities.Sofor", "Sofor")
+                        .WithMany()
+                        .HasForeignKey("SoforId");
+
+                    b.Navigation("Arac");
+
+                    b.Navigation("Sofor");
                 });
 
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Bakim", b =>
@@ -5162,6 +5770,13 @@ namespace Ozaylar.Filo.Infrastructure.Veri.Migrations
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Fatura", b =>
                 {
                     b.Navigation("Kalemler");
+                });
+
+            modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Kredi", b =>
+                {
+                    b.Navigation("Araclar");
+
+                    b.Navigation("Taksitler");
                 });
 
             modelBuilder.Entity("Ozaylar.Filo.Domain.Entities.Kullanici", b =>

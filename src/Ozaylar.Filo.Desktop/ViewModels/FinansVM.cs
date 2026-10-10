@@ -71,10 +71,19 @@ public sealed class CariListeVM(IDisaAktarici d, CariServisi servis, Secimler s,
         public string? Aciklama { get; set; }
     }
 
+    public override bool DetayVar => true;
+    protected override Task DetayAsync(CariBakiyeSatir satir) => Detay.Cari(satir.Id);
+
     private async Task TahsilatOdemeAsync(bool tahsilat)
     {
-        if (Secili is not { } c) return;
-        var m = new TOModel { Tutar = Math.Abs(c.Bakiye) };
+        if (Secili is { } c && await TahsilatOdemeIdAsync(c.Id, c.Unvan, tahsilat, Math.Abs(c.Bakiye))) await YenileAsync();
+    }
+
+    /// <summary>Tahsilat / ödeme formu (liste ve cari detay sayfası ortak).</summary>
+    public async Task<bool> TahsilatOdemeIdAsync(int cariId, string unvan, bool tahsilat, decimal tutar = 0)
+    {
+        var c = (Id: cariId, Unvan: unvan);
+        var m = new TOModel { Tutar = tutar };
         var alanlar = new List<FormAlani>
         {
             new() { Etiket = "Kasa / banka", Yol = nameof(TOModel.KasaId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await Secimler.KasalarAsync() },
@@ -87,9 +96,9 @@ public sealed class CariListeVM(IDisaAktarici d, CariServisi servis, Secimler s,
             tahsilat
                 ? finans.TahsilatAsync(new TahsilatOdeme(c.Id, m.KasaId!.Value, m.Tarih, m.Tutar, m.Aciklama, m.Kur))
                 : finans.OdemeAsync(new TahsilatOdeme(c.Id, m.KasaId!.Value, m.Tarih, m.Tutar, m.Aciklama, m.Kur)));
-        if (!ok) return;
+        if (!ok) return false;
         AnaPencere.Basarili(tahsilat ? "Tahsilat kaydedildi." : "Ödeme kaydedildi.");
-        await YenileAsync();
+        return true;
     }
 
     private sealed class ManuelModel
@@ -356,112 +365,3 @@ public sealed class CekSenetListeVM(IDisaAktarici d, CekSenetServisi servis, Sec
     }
 }
 
-public sealed class FinansmanListeVM(IDisaAktarici d, FinansmanServisi servis, Secimler s, IKullaniciOturumu oturum) : ListeVM<FinansmanSatir>(d)
-{
-    public override string Baslik => "Kredi / Leasing Sözleşmeleri";
-    public override bool YeniVar => oturum.Yetkili(Izinler.FinansmanYaz);
-    public override bool DuzenleVar => true;
-
-    public override IReadOnlyList<Kolon> Kolonlar { get; } =
-    [
-        new("Plaka", nameof(FinansmanSatir.Plaka)), new("Tip", nameof(FinansmanSatir.TipAd)), new("Kurum", nameof(FinansmanSatir.Kurum), Genislik: 200),
-        new("Sözleşme", nameof(FinansmanSatir.SozlesmeNo)), Kolon.Para("Anapara", nameof(FinansmanSatir.Anapara)), new("PB", nameof(FinansmanSatir.ParaBirimi)),
-        Kolon.Sayi("Vade", nameof(FinansmanSatir.VadeSayisi)), Kolon.Sayi("Ödenen", nameof(FinansmanSatir.OdenenTaksit)),
-        Kolon.Para("Kalan Borç", nameof(FinansmanSatir.KalanBorc)), Kolon.Tarih("Sonraki Vade", nameof(FinansmanSatir.SonrakiVade)), new("Aktif", "Aktif?bool"),
-    ];
-
-    protected override async Task<IEnumerable<FinansmanSatir>> YukleAsync() => await servis.ListeAsync();
-
-    protected override async Task YeniAsync()
-    {
-        if (await FormAsync(new AracFinansman { BaslangicTarihi = DateOnly.FromDateTime(DateTime.Today), VadeSayisi = 36 })) await YenileAsync();
-    }
-
-    protected override async Task DuzenleAsync(FinansmanSatir satir)
-    {
-        var f = await servis.GetirAsync(satir.Id);
-        if (f is not null && await FormAsync(f)) await YenileAsync();
-    }
-
-    private async Task<bool> FormAsync(AracFinansman f)
-    {
-        var yeni = f.Id == 0;
-        var alanlar = new List<FormAlani>
-        {
-            FormAlani.EnumSecim<FinansmanTipi>("Tip", nameof(AracFinansman.Tip)),
-            new() { Etiket = "Araç", Yol = nameof(AracFinansman.AracId), Tip = AlanTipi.Secim, Secenekler = await s.AraclarAsync(false) },
-            new() { Etiket = "Dorse", Yol = nameof(AracFinansman.DorseId), Tip = AlanTipi.Secim, Secenekler = await s.DorselerAsync(false) },
-            new() { Etiket = "Banka / leasing şirketi", Yol = nameof(AracFinansman.FinansKurumuCariId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.CarilerAsync(CariTipi.Finans) },
-            new() { Etiket = "Sözleşme no", Yol = nameof(AracFinansman.SozlesmeNo), MaksUzunluk = 40 },
-            new() { Etiket = "Başlangıç", Yol = nameof(AracFinansman.BaslangicTarihi), Tip = AlanTipi.Tarih, Zorunlu = true },
-            new() { Etiket = "Anapara", Yol = nameof(AracFinansman.AnaparaTutar), Tip = AlanTipi.Para, Zorunlu = true },
-            FormAlani.EnumSecim<ParaBirimi>("Para birimi", nameof(AracFinansman.ParaBirimi)),
-            new() { Etiket = "Aylık faiz %", Yol = nameof(AracFinansman.AylikFaizOrani), Tip = AlanTipi.Ondalik, Ipucu = "BSMV/KKDF dahil efektif aylık oran" },
-            new() { Etiket = "Vade sayısı (ay)", Yol = nameof(AracFinansman.VadeSayisi), Tip = AlanTipi.Tamsayi, Zorunlu = true },
-            new() { Etiket = "Aktif", Yol = nameof(AracFinansman.Aktif), Tip = AlanTipi.Onay },
-            new() { Etiket = "Açıklama", Yol = nameof(AracFinansman.Aciklama), Tip = AlanTipi.CokSatir, MaksUzunluk = 300 },
-        };
-        return FormPenceresi.Ac(yeni ? "Yeni Kredi / Leasing" : "Kredi / Leasing Düzenle", f, alanlar, async _ =>
-        {
-            // Plan: eşit taksit önerisi (ilk vade başlangıçtan bir ay sonra). Banka planı farklıysa Taksit Takvimi'nden tek tek düzenlenebilir.
-            var plan = yeni || f.Taksitler.All(t => t.OdemeTarihi is null)
-                ? FinansmanServisi.PlanOner(f, f.BaslangicTarihi.AddMonths(1))
-                : f.Taksitler;
-            await servis.KaydetAsync(f, plan);
-        }, 900);
-    }
-}
-
-public sealed class TaksitListeVM(IDisaAktarici d, FinansmanServisi servis, Secimler s, IKullaniciOturumu oturum) : ListeVM<TaksitSatir>(d)
-{
-    public override string Baslik => "Taksit Takvimi";
-    public override bool TarihFiltresi => true;
-    public override string? OnayFiltreMetni => "Ödenmişleri de göster";
-
-    public override IReadOnlyList<Kolon> Kolonlar { get; } =
-    [
-        Kolon.Tarih("Vade", nameof(TaksitSatir.Vade)), new("Plaka", nameof(TaksitSatir.Plaka)), new("Kurum", nameof(TaksitSatir.Kurum), Genislik: 200),
-        Kolon.Sayi("Taksit", nameof(TaksitSatir.TaksitNo)), Kolon.Para("Anapara", nameof(TaksitSatir.Anapara)), Kolon.Para("Faiz", nameof(TaksitSatir.Faiz)),
-        Kolon.Para("Toplam", nameof(TaksitSatir.Toplam)), new("PB", nameof(TaksitSatir.ParaBirimi)), Kolon.Tarih("Ödeme", nameof(TaksitSatir.OdemeTarihi)),
-    ];
-
-    public override IReadOnlyList<Eylem> Eylemler =>
-    [
-        E("Öde", SymbolRegular.Payment24, OdeAsync),
-        E("Ödemeyi Geri Al", SymbolRegular.ArrowUndo24, async () =>
-        {
-            if (Secili is not { Odendi: true } t || !await Dialog.Onay("Taksit ödemesi geri alınsın mı? (Kasa kaydı ters çevrilir)")) return;
-            await servis.TaksitOdemeIptalAsync(t.Id);
-            await YenileAsync();
-        }),
-    ];
-
-    protected override async Task<IEnumerable<TaksitSatir>> YukleAsync()
-    {
-        var bit = BitTarih is { } b && b > DateTime.Today ? Bit : DateOnly.FromDateTime(DateTime.Today.AddYears(1));
-        return await servis.TaksitlerAsync(Bas, bit, !OnayFiltre);
-    }
-
-    protected override string? OzetHesapla(IReadOnlyList<TaksitSatir> l) =>
-        $"Ödenecek: {l.Where(t => !t.Odendi).Sum(t => t.Toplam):N2}   •   Faiz: {l.Where(t => !t.Odendi).Sum(t => t.Faiz):N2}";
-
-    private sealed class OdeModel
-    {
-        public byte? KasaId { get; set; }
-        public DateOnly Tarih { get; set; } = DateOnly.FromDateTime(DateTime.Today);
-    }
-
-    private async Task OdeAsync()
-    {
-        if (Secili is not { } t) return;
-        if (t.Odendi) { await Dialog.Bilgi("Taksit zaten ödenmiş."); return; }
-        var m = new OdeModel();
-        var alanlar = new List<FormAlani>
-        {
-            new() { Etiket = "Kasa / banka", Yol = nameof(OdeModel.KasaId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.KasalarAsync(t.ParaBirimi) },
-            new() { Etiket = "Ödeme tarihi", Yol = nameof(OdeModel.Tarih), Tip = AlanTipi.Tarih, Zorunlu = true },
-        };
-        if (FormPenceresi.Ac($"Taksit Öde — {t.Kurum} #{t.TaksitNo} ({t.Toplam:N2})", m, alanlar, _ => servis.TaksitOdeAsync(t.Id, m.KasaId!.Value, m.Tarih)))
-            await YenileAsync();
-    }
-}

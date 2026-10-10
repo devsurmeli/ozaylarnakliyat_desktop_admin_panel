@@ -74,6 +74,8 @@ public sealed class SoforHesapServisi(IFiloDbContextFactory factory, IKullaniciO
         else if (a.Kur <= 0) throw new DomainException("Dövizli avans için kur girilmelidir.");
         await Defter.KasaCikisKontrolAsync(db, a.KasaHesapId, a.Tutar, ct);
         var seferNo = await SeferNoAsync(db, a.SeferId, ct);
+        a.AracId ??= await AracBulAsync(db, a.SoforId, a.SeferId, a.Tarih, ct);
+        var plaka = await PlakaAsync(db, a.AracId, ct);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         a.Id = 0;
@@ -81,9 +83,11 @@ public sealed class SoforHesapServisi(IFiloDbContextFactory factory, IKullaniciO
         a.Iptal = false;
         db.Avanslar.Add(a);
         await db.KaydetAsync(ct);
-        var acik = $"Avans - {sofor.Ad} {sofor.Soyad}{(seferNo is null ? "" : " / " + seferNo)}";
+        var kanal = kasa.HesapTipi == KasaHesapTipi.Kasa ? "elden" : "EFT";
+        var acik = $"{a.Tur.Ad()} ({kanal}) - {sofor.Ad} {sofor.Soyad}{(plaka is null ? "" : " / " + plaka)}{(seferNo is null ? "" : " / " + seferNo)}"
+                   + (string.IsNullOrWhiteSpace(a.Aciklama) ? "" : " - " + a.Aciklama);
         Defter.Kasa(db, a.KasaHesapId, a.Tarih, 0, a.Tutar, KaynakTip.Avans, a.Id, acik, sofor.CariId, a.Kur);
-        Defter.Cari(db, sofor.CariId, a.Tarih, a.Tutar, 0, KaynakTip.Avans, a.Id, acik, a.ParaBirimi, a.Kur);
+        Defter.Cari(db, sofor.CariId, a.Tarih, a.Tutar, 0, KaynakTip.Avans, a.Id, acik, a.ParaBirimi, a.Kur, aracId: a.AracId, seferId: a.SeferId);
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);
         return a;
@@ -150,9 +154,10 @@ public sealed class SoforHesapServisi(IFiloDbContextFactory factory, IKullaniciO
         {
             db.Harcirahlar.Add(h);
         }
+        h.AracId ??= await AracBulAsync(db, h.SoforId, h.SeferId, h.Baslangic, ct);
         await db.KaydetAsync(ct);
         Defter.Cari(db, sofor.CariId, h.Bitis, 0, h.Tutar, KaynakTip.Harcirah, h.Id,
-            $"Harcırah {h.GunSayisi:0.#} gün × {h.GunlukTutar:N2}{(seferNo is null ? "" : " / " + seferNo)}", h.ParaBirimi, h.Kur);
+            $"Harcırah {h.GunSayisi:0.#} gün × {h.GunlukTutar:N2}{(seferNo is null ? "" : " / " + seferNo)}", h.ParaBirimi, h.Kur, aracId: h.AracId, seferId: h.SeferId);
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);
         return h;
@@ -201,7 +206,7 @@ public sealed class SoforHesapServisi(IFiloDbContextFactory factory, IKullaniciO
         await using var db = factory.Olustur();
         var liste = new List<AcikKalem>();
         liste.AddRange((await db.Avanslar.AsNoTracking()
-                .Where(a => a.SoforId == soforId && a.MahsupId == null && !a.Iptal && (seferId == null || a.SeferId == seferId))
+                .Where(a => a.SoforId == soforId && a.MahsupId == null && !a.Iptal && a.Tur != AvansTuru.MaasOdemesi && (seferId == null || a.SeferId == seferId))
                 .Select(a => new { a.Id, a.Tarih, SeferNo = a.Sefer != null ? a.Sefer.SeferNo : null, a.Aciklama, a.Tutar, a.ParaBirimi, a.Kur })
                 .ToListAsync(ct))
             .Select(a => new AcikKalem(AcikKalemTuru.Avans, a.Id, a.Tarih, a.SeferNo, a.Aciklama ?? "Avans", a.Tutar, a.ParaBirimi, Para.TL(a.Tutar, a.Kur), true)));
@@ -298,15 +303,16 @@ public sealed class SoforHesapServisi(IFiloDbContextFactory factory, IKullaniciO
         foreach (var x in await db.Harcirahlar.Where(a => harc.Contains(a.Id)).ToListAsync(ct)) x.MahsupId = m.Id;
 
         var metin = $"Mahsup farkı - {sofor.Ad} {sofor.Soyad}";
+        var mahsupArac = await AracBulAsync(db, soforId, seferId, tarih, ct);
         if (sonuc == MahsupSonuc.IadeAlindi)
         {
             Defter.Kasa(db, kasaHesapId!.Value, tarih, fark, 0, KaynakTip.Mahsup, m.Id, metin, sofor.CariId);
-            Defter.Cari(db, sofor.CariId, tarih, 0, fark, KaynakTip.Mahsup, m.Id, metin);
+            Defter.Cari(db, sofor.CariId, tarih, 0, fark, KaynakTip.Mahsup, m.Id, metin, aracId: mahsupArac, seferId: seferId);
         }
         else if (sonuc == MahsupSonuc.SoforeOdendi)
         {
             Defter.Kasa(db, kasaHesapId!.Value, tarih, 0, -fark, KaynakTip.Mahsup, m.Id, metin, sofor.CariId);
-            Defter.Cari(db, sofor.CariId, tarih, -fark, 0, KaynakTip.Mahsup, m.Id, metin);
+            Defter.Cari(db, sofor.CariId, tarih, -fark, 0, KaynakTip.Mahsup, m.Id, metin, aracId: mahsupArac, seferId: seferId);
         }
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);
@@ -339,21 +345,21 @@ public sealed class SoforHesapServisi(IFiloDbContextFactory factory, IKullaniciO
             .OrderByDescending(m => m.Tarih).ToListAsync(ct);
     }
 
-    public async Task<List<AvansSatir>> AvanslarAsync(DateOnly bas, DateOnly bit, CancellationToken ct = default)
+    public async Task<List<AvansSatir>> AvanslarAsync(DateOnly bas, DateOnly bit, short? soforId = null, CancellationToken ct = default)
     {
         oturum.YetkiGerekli(Izinler.SoforHesapGor);
         await using var db = factory.Olustur();
-        return await db.Avanslar.AsNoTracking().Where(a => a.Tarih >= bas && a.Tarih <= bit).OrderByDescending(a => a.Tarih).ThenByDescending(a => a.Id)
+        return await db.Avanslar.AsNoTracking().Where(a => a.Tarih >= bas && a.Tarih <= bit && (soforId == null || a.SoforId == soforId)).OrderByDescending(a => a.Tarih).ThenByDescending(a => a.Id)
             .Select(a => new AvansSatir(a.Id, a.Tarih, a.Sofor!.Ad + " " + a.Sofor.Soyad, a.Sefer != null ? a.Sefer.SeferNo : null, a.Tutar, a.ParaBirimi,
                 db.KasaHesaplari.Where(k => k.Id == a.KasaHesapId).Select(k => k.Ad).FirstOrDefault(), a.Aciklama, a.MahsupId != null, a.Iptal))
             .ToListAsync(ct);
     }
 
-    public async Task<List<HarcirahSatir>> HarcirahlarAsync(DateOnly bas, DateOnly bit, CancellationToken ct = default)
+    public async Task<List<HarcirahSatir>> HarcirahlarAsync(DateOnly bas, DateOnly bit, short? soforId = null, CancellationToken ct = default)
     {
         oturum.YetkiGerekli(Izinler.SoforHesapGor);
         await using var db = factory.Olustur();
-        return await db.Harcirahlar.AsNoTracking().Where(h => h.Bitis >= bas && h.Baslangic <= bit).OrderByDescending(h => h.Bitis)
+        return await db.Harcirahlar.AsNoTracking().Where(h => h.Bitis >= bas && h.Baslangic <= bit && (soforId == null || h.SoforId == soforId)).OrderByDescending(h => h.Bitis)
             .Select(h => new HarcirahSatir(h.Id, h.Sofor!.Ad + " " + h.Sofor.Soyad, h.Sefer != null ? h.Sefer.SeferNo : null,
                 h.UlkeId != null ? db.Ulkeler.Where(u => u.Id == h.UlkeId).Select(u => u.Ad).FirstOrDefault() : "Yurtiçi",
                 h.Baslangic, h.Bitis, h.GunSayisi, h.GunlukTutar, h.Tutar, h.ParaBirimi, h.MahsupId != null, h.Iptal))
@@ -365,4 +371,307 @@ public sealed class SoforHesapServisi(IFiloDbContextFactory factory, IKullaniciO
 
     private static async Task<string?> SeferNoAsync(IFiloDbContext db, int? seferId, CancellationToken ct) =>
         seferId is null ? null : await db.Seferler.Where(s => s.Id == seferId).Select(s => s.SeferNo).SingleOrDefaultAsync(ct);
+
+    private static async Task<string?> PlakaAsync(IFiloDbContext db, short? aracId, CancellationToken ct) =>
+        aracId is null ? null : await db.Araclar.Where(a => a.Id == aracId).Select(a => a.Plaka).SingleOrDefaultAsync(ct);
+
+    /// <summary>Hareketin aracı: seferin aracı → tarihteki şoför-araç ataması → şoförün varsayılan aracı.</summary>
+    internal static async Task<short?> AracBulAsync(IFiloDbContext db, short soforId, int? seferId, DateOnly tarih, CancellationToken ct)
+    {
+        if (seferId is not null)
+        {
+            var a = await db.Seferler.Where(s => s.Id == seferId).Select(s => s.AracId).SingleOrDefaultAsync(ct);
+            if (a is not null) return a;
+        }
+        var atama = await db.SoforAracAtamalari.Where(x => x.SoforId == soforId && x.Baslangic <= tarih && (x.Bitis == null || x.Bitis >= tarih))
+            .OrderByDescending(x => x.Baslangic).Select(x => (short?)x.AracId).FirstOrDefaultAsync(ct);
+        return atama ?? await db.Soforler.Where(s => s.Id == soforId).Select(s => s.VarsayilanAracId).SingleOrDefaultAsync(ct);
+    }
+
+    // ------------------------------- Para Al (iade / müşteri tahsilatı) -------------------------------
+
+    public enum ParaAlTuru : byte { Iade = 1, MusteriTahsilati = 2 }
+
+    /// <summary>
+    /// Şoförden para alma. İade: kasaya giriş + şoför carisine alacak. Müşteri tahsilatı: şoför müşteriden nakit/navlun aldı →
+    /// müşteri carisine alacak, şoför carisine borç (para şoförde); kasa seçilirse şoför parayı hemen teslim etmiş sayılır.
+    /// </summary>
+    public async Task<int> ParaAlAsync(short soforId, ParaAlTuru tur, DateOnly tarih, decimal tutar, byte? kasaHesapId, int? musteriCariId,
+        int? seferId, short? aracId, string? aciklama, ParaBirimi pb = ParaBirimi.TRY, decimal kur = 1m, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapYaz);
+        if (tutar <= 0) throw new DomainException("Tutar sıfırdan büyük olmalıdır.");
+        if (tur == ParaAlTuru.Iade && kasaHesapId is null) throw new DomainException("İadenin girdiği kasa/banka seçilmelidir.");
+        if (tur == ParaAlTuru.MusteriTahsilati && musteriCariId is null) throw new DomainException("Şoförün tahsilat yaptığı müşteri seçilmelidir.");
+        if (pb == ParaBirimi.TRY) kur = 1;
+        await using var db = factory.Olustur();
+        var sofor = await SoforAsync(db, soforId, ct);
+        aracId ??= await AracBulAsync(db, soforId, seferId, tarih, ct);
+        if (kasaHesapId is { } kid && await db.KasaHesaplari.Where(k => k.Id == kid).Select(k => k.ParaBirimi).SingleAsync(ct) != pb)
+            throw new DomainException("Kasa/banka para birimi tutarın para birimiyle aynı olmalıdır.");
+        var seferNo = await SeferNoAsync(db, seferId, ct);
+        var plaka = await PlakaAsync(db, aracId, ct);
+        var ek = $"{(plaka is null ? "" : " / " + plaka)}{(seferNo is null ? "" : " / " + seferNo)}{(string.IsNullOrWhiteSpace(aciklama) ? "" : " - " + aciklama)}";
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var no = await Defter.IslemNoAsync(db, ct);
+        if (tur == ParaAlTuru.MusteriTahsilati)
+        {
+            var musteri = await db.Cariler.Where(c => c.Id == musteriCariId).Select(c => c.Unvan).SingleAsync(ct);
+            Defter.Cari(db, musteriCariId!.Value, tarih, 0, tutar, KaynakTip.SoforTahsilat, no, $"Şoför tahsilatı ({sofor.Ad} {sofor.Soyad}){ek}", pb, kur, aracId: aracId, seferId: seferId);
+            Defter.Cari(db, sofor.CariId, tarih, tutar, 0, KaynakTip.SoforTahsilat, no, $"Müşteriden tahsil edilen: {musteri}{ek}", pb, kur, aracId: aracId, seferId: seferId);
+        }
+        if (kasaHesapId is { } kasa)
+        {
+            var metin = tur == ParaAlTuru.Iade ? $"Şoförden iade - {sofor.Ad} {sofor.Soyad}{ek}" : $"Şoför tahsilatı teslim - {sofor.Ad} {sofor.Soyad}{ek}";
+            Defter.Kasa(db, kasa, tarih, tutar, 0, KaynakTip.SoforTahsilat, no, metin, sofor.CariId, kur);
+            Defter.Cari(db, sofor.CariId, tarih, 0, tutar, KaynakTip.SoforTahsilat, no, metin, pb, kur, aracId: aracId, seferId: seferId);
+        }
+        await db.KaydetAsync(ct);
+        await tx.CommitAsync(ct);
+        return no;
+    }
+
+    public async Task ParaAlIptalAsync(int islemNo, string neden, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.FinansIptal);
+        await using var db = factory.Olustur();
+        await Defter.TersKayitAsync(db, KaynakTip.SoforTahsilat, islemNo, saat.Bugun, neden, ct);
+        await db.KaydetAsync(ct);
+    }
+
+    // ------------------------------- Günlük defter -------------------------------
+
+    /// <summary>
+    /// Şoför hareket defteri: verilen (şoför borçlanır: avans, harçlık, EFT, maaş ödemesi, rücu) / alınan (harcama, harcırah, iade,
+    /// hakediş). Tarih aralığı, şoför ve araç filtresi. Şoför seçiliyse yürüyen bakiye hesaplanır.
+    /// </summary>
+    public async Task<List<SoforDefterSatir>> DefterAsync(DateOnly bas, DateOnly bit, short? soforId = null, short? aracId = null, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapGor);
+        await using var db = factory.Olustur();
+        var soforler = await db.Soforler.AsNoTracking().IgnoreQueryFilters().Where(s => soforId == null || s.Id == soforId)
+            .Select(s => new { s.Id, s.CariId, Ad = s.Ad + " " + s.Soyad }).ToListAsync(ct);
+        var cariler = soforler.Select(s => s.CariId).ToList();
+        var cariSofor = soforler.ToDictionary(s => s.CariId);
+        decimal devir = 0;
+        if (soforId is not null)
+            devir = await db.CariHareketleri.Where(h => cariler.Contains(h.CariId) && h.Tarih < bas && (aracId == null || h.AracId == aracId)).SumAsync(h => h.Borc - h.Alacak, ct);
+        var ham = await db.CariHareketleri.AsNoTracking()
+            .Where(h => cariler.Contains(h.CariId) && h.Tarih >= bas && h.Tarih <= bit && (aracId == null || h.AracId == aracId))
+            .OrderBy(h => h.Tarih).ThenBy(h => h.Id)
+            .Select(h => new
+            {
+                h.Id, h.CariId, h.Tarih, h.KaynakTip, h.KaynakId, h.Aciklama, h.Borc, h.Alacak, h.ParaBirimi, h.DovizBorc, h.DovizAlacak,
+                Plaka = h.AracId != null ? db.Araclar.IgnoreQueryFilters().Where(a => a.Id == h.AracId).Select(a => a.Plaka).FirstOrDefault() : null,
+                SeferNo = h.SeferId != null ? db.Seferler.IgnoreQueryFilters().Where(s => s.Id == h.SeferId).Select(s => s.SeferNo).FirstOrDefault() : null,
+                Iptal = h.TersKayitId != null || db.CariHareketleri.Any(t => t.TersKayitId == h.Id),
+            }).ToListAsync(ct);
+        var bakiye = devir;
+        return ham.Select(h =>
+        {
+            bakiye += h.Borc - h.Alacak;
+            var doviz = h.ParaBirimi == ParaBirimi.TRY ? null : $"{h.DovizBorc ?? h.DovizAlacak:N2} {h.ParaBirimi.Ad()}";
+            return new SoforDefterSatir(h.Id, h.Tarih, cariSofor[h.CariId].Id, cariSofor[h.CariId].Ad, h.Plaka, h.SeferNo, h.KaynakTip, h.KaynakId,
+                h.Aciklama, h.Borc, h.Alacak, soforId is null ? null : bakiye, doviz, h.Iptal);
+        }).ToList();
+    }
+
+    // ------------------------------- Şoför-araç atama -------------------------------
+
+    public async Task<List<AtamaSatir>> AtamalarAsync(short? soforId, short? aracId, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.FiloGor);
+        await using var db = factory.Olustur();
+        return await db.SoforAracAtamalari.AsNoTracking().Where(a => (soforId == null || a.SoforId == soforId) && (aracId == null || a.AracId == aracId))
+            .OrderByDescending(a => a.Baslangic)
+            .Select(a => new AtamaSatir(a.Id, a.Sofor!.Ad + " " + a.Sofor.Soyad, a.Arac!.Plaka, a.Baslangic, a.Bitis)).ToListAsync(ct);
+    }
+
+    /// <summary>Şoförü araca atar: şoförün açık ataması ve aracın başka şoförle açık ataması kapanır; varsayılan araç güncellenir.</summary>
+    public async Task AracAtaAsync(short soforId, short aracId, DateOnly tarih, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.FiloYaz);
+        await using var db = factory.Olustur();
+        var acik = await db.SoforAracAtamalari.Where(a => a.Bitis == null && (a.SoforId == soforId || a.AracId == aracId)).ToListAsync(ct);
+        foreach (var a in acik)
+        {
+            if (a.SoforId == soforId && a.AracId == aracId) return;
+            a.Bitis = tarih.AddDays(-1) < a.Baslangic ? a.Baslangic : tarih.AddDays(-1);
+        }
+        db.SoforAracAtamalari.Add(new SoforAracAtama { SoforId = soforId, AracId = aracId, Baslangic = tarih });
+        var s = await db.Soforler.SingleAsync(x => x.Id == soforId, ct);
+        s.VarsayilanAracId = aracId;
+        await db.KaydetAsync(ct);
+    }
+
+    // ------------------------------- Hakediş -------------------------------
+
+    /// <summary>
+    /// Dönem hakediş önerisi: maaş + prim (birincil şoför olduğu, dönemde teslim edilen seferler; sefer başı veya km başı).
+    /// Dönem için zaten yazılmış tahakkuklar tekrar önerilmez.
+    /// </summary>
+    public async Task<List<HakedisOneri>> HakedisOnerAsync(int donem, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapGor);
+        var bas = new DateOnly(donem / 100, donem % 100, 1);
+        var bit = bas.AddMonths(1).AddDays(-1);
+        var b0 = bas.ToDateTime(TimeOnly.MinValue);
+        var b1 = bit.ToDateTime(TimeOnly.MaxValue);
+        await using var db = factory.Olustur();
+        var soforler = await db.Soforler.AsNoTracking().Where(s => s.Aktif && (s.MaasTutari > 0 || s.PrimTipi != PrimTipi.Yok))
+            .Select(s => new { s.Id, Ad = s.Ad + " " + s.Soyad, s.MaasTutari, s.PrimTipi, s.PrimTutari, s.VarsayilanAracId }).ToListAsync(ct);
+        var mevcut = await db.PersonelTahakkuklari.AsNoTracking().Where(t => t.Donem == donem && !t.Iptal)
+            .Select(t => new { t.SoforId, t.Tur, t.SeferId }).ToListAsync(ct);
+        var seferler = await db.SeferSoforleri.AsNoTracking()
+            .Where(x => x.Birincil && x.Sefer!.Durum != SeferDurum.Iptal && x.Sefer.TeslimTarihi >= b0 && x.Sefer.TeslimTarihi <= b1)
+            .Select(x => new { x.SoforId, x.SeferId, x.Sefer!.SeferNo, x.Sefer.AracId, Km = x.Sefer.DonusKm - x.Sefer.CikisKm }).ToListAsync(ct);
+
+        var sonuc = new List<HakedisOneri>();
+        foreach (var s in soforler)
+        {
+            if (s.MaasTutari is > 0 && !mevcut.Any(m => m.SoforId == s.Id && m.Tur == TahakkukTuru.Maas))
+                sonuc.Add(new HakedisOneri(s.Id, s.Ad, TahakkukTuru.Maas, s.MaasTutari.Value, null, null, s.VarsayilanAracId, $"{bas:MMMM yyyy} maaşı"));
+            if (s.PrimTipi == PrimTipi.Yok || s.PrimTutari is not > 0) continue;
+            foreach (var sf in seferler.Where(x => x.SoforId == s.Id && !mevcut.Any(m => m.SoforId == s.Id && m.SeferId == x.SeferId)))
+            {
+                var tutar = s.PrimTipi == PrimTipi.SeferBasi ? s.PrimTutari.Value : Para.Yuvarla((sf.Km ?? 0) * s.PrimTutari.Value);
+                if (tutar <= 0) continue;
+                sonuc.Add(new HakedisOneri(s.Id, s.Ad, s.PrimTipi == PrimTipi.SeferBasi ? TahakkukTuru.SeferPrimi : TahakkukTuru.KmPrimi, tutar,
+                    sf.SeferId, sf.SeferNo, sf.AracId, s.PrimTipi == PrimTipi.SeferBasi ? $"Sefer primi {sf.SeferNo}" : $"Km primi {sf.SeferNo} ({sf.Km:N0} km)"));
+            }
+        }
+        return sonuc;
+    }
+
+    /// <summary>Tahakkuk satırlarını yazar: maaş/prim/ek → şoför carisine alacak; kesinti → borç.</summary>
+    public async Task TahakkukYazAsync(int donem, IReadOnlyList<PersonelTahakkuk> satirlar, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapOnay);
+        if (satirlar.Count == 0) return;
+        var tarih = new DateOnly(donem / 100, donem % 100, 1).AddMonths(1).AddDays(-1);
+        await using var db = factory.Olustur();
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        foreach (var t in satirlar)
+        {
+            if (t.Tutar <= 0) throw new DomainException("Tahakkuk tutarı sıfırdan büyük olmalıdır.");
+            var sofor = await SoforAsync(db, t.SoforId, ct);
+            t.Id = 0;
+            t.Donem = donem;
+            if (t.Tarih == default) t.Tarih = tarih;
+            db.PersonelTahakkuklari.Add(t);
+            await db.KaydetAsync(ct);
+            var metin = $"{t.Tur.Ad()} {donem % 100:D2}/{donem / 100}{(string.IsNullOrWhiteSpace(t.Aciklama) ? "" : " - " + t.Aciklama)}";
+            Defter.Cari(db, sofor.CariId, t.Tarih, t.Kesinti ? t.Tutar : 0, t.Kesinti ? 0 : t.Tutar, KaynakTip.Hakedis, t.Id, metin, aracId: t.AracId, seferId: t.SeferId);
+        }
+        await db.KaydetAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
+    public async Task TahakkukIptalAsync(int id, string neden, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.FinansIptal);
+        await using var db = factory.Olustur();
+        var t = await db.PersonelTahakkuklari.SingleAsync(x => x.Id == id, ct);
+        if (t.Iptal) return;
+        t.Iptal = true;
+        await Defter.TersKayitAsync(db, KaynakTip.Hakedis, t.Id, saat.Bugun, neden, ct);
+        await db.KaydetAsync(ct);
+    }
+
+    public async Task<List<TahakkukSatir>> TahakkuklarAsync(int? donem, short? soforId, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapGor);
+        await using var db = factory.Olustur();
+        return await db.PersonelTahakkuklari.AsNoTracking().Where(t => (donem == null || t.Donem == donem) && (soforId == null || t.SoforId == soforId))
+            .OrderByDescending(t => t.Donem).ThenBy(t => t.Sofor!.Ad)
+            .Select(t => new TahakkukSatir(t.Id, t.Donem, t.Sofor!.Ad + " " + t.Sofor.Soyad, t.Tur, t.Tutar, t.Sefer != null ? t.Sefer.SeferNo : null,
+                t.Arac != null ? t.Arac.Plaka : null, t.Aciklama, t.Iptal)).ToListAsync(ct);
+    }
+
+    // ------------------------------- Zimmet -------------------------------
+
+    public async Task<List<ZimmetSatir>> ZimmetlerAsync(short? soforId, short? aracId, bool iadeDahil, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapGor);
+        await using var db = factory.Olustur();
+        return await db.Zimmetler.AsNoTracking()
+            .Where(z => (soforId == null || z.SoforId == soforId) && (aracId == null || z.AracId == aracId) && (iadeDahil || z.Durum == ZimmetDurum.Zimmette))
+            .OrderBy(z => z.Durum).ThenByDescending(z => z.VerilisTarihi)
+            .Select(z => new ZimmetSatir(z.Id, z.Tur, z.Ad, z.SeriNo, z.Sofor != null ? z.Sofor.Ad + " " + z.Sofor.Soyad : null, z.Arac != null ? z.Arac.Plaka : null,
+                z.VerilisTarihi, z.IadeTarihi, z.Durum, z.Deger, z.Aciklama)).ToListAsync(ct);
+    }
+
+    /// <summary>Zimmeti kapatır (iade / kayıp).</summary>
+    public async Task ZimmetKapatAsync(int id, DateOnly tarih, ZimmetDurum durum, string? aciklama, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapYaz);
+        if (durum == ZimmetDurum.Zimmette) throw new DomainException("İade veya kayıp seçilmelidir.");
+        await using var db = factory.Olustur();
+        var z = await db.Zimmetler.SingleAsync(x => x.Id == id, ct);
+        if (tarih < z.VerilisTarihi) throw new DomainException("İade tarihi veriliş tarihinden önce olamaz.");
+        z.Durum = durum;
+        z.IadeTarihi = tarih;
+        if (!string.IsNullOrWhiteSpace(aciklama)) z.Aciklama = string.IsNullOrWhiteSpace(z.Aciklama) ? aciklama : $"{z.Aciklama} / {aciklama}";
+        await db.KaydetAsync(ct);
+    }
+
+    // ------------------------------- Şoför özeti (detay KPI) -------------------------------
+
+    public async Task<SoforOzet> OzetAsync(short soforId, CancellationToken ct = default)
+    {
+        oturum.YetkiGerekli(Izinler.SoforHesapGor);
+        var bugun = saat.Bugun;
+        var ayBas = new DateOnly(bugun.Year, bugun.Month, 1);
+        var donem = bugun.Year * 100 + bugun.Month;
+        await using var db = factory.Olustur();
+        var s = await db.Soforler.AsNoTracking().Include(x => x.VarsayilanArac).SingleAsync(x => x.Id == soforId, ct);
+        var bakiye = await Defter.CariBakiyeAsync(db, s.CariId, ct);
+        var acikAvans = await db.Avanslar.Where(a => a.SoforId == soforId && a.MahsupId == null && !a.Iptal && a.Tur != AvansTuru.MaasOdemesi).SumAsync(a => (decimal?)a.Tutar * a.Kur, ct) ?? 0;
+        var onay = await db.Masraflar.CountAsync(m => m.SoforId == soforId && !m.Onayli && !m.Iptal, ct);
+        var sefer = await db.SeferSoforleri.CountAsync(x => x.SoforId == soforId && x.Sefer!.PlanlananTarih >= ayBas && x.Sefer.Durum != SeferDurum.Iptal, ct);
+        var hakedis = await db.PersonelTahakkuklari.Where(t => t.SoforId == soforId && t.Donem == donem && !t.Iptal)
+            .SumAsync(t => (decimal?)(t.Tur == TahakkukTuru.Kesinti ? -t.Tutar : t.Tutar), ct) ?? 0;
+        var zimmet = await db.Zimmetler.CountAsync(z => z.SoforId == soforId && z.Durum == ZimmetDurum.Zimmette, ct);
+        return new SoforOzet(s.Id, s.AdSoyad, s.CariId, s.VarsayilanArac?.Plaka, s.Telefon, bakiye, acikAvans, onay, sefer, hakedis, zimmet, s.BakiyeLimiti);
+    }
+}
+
+public sealed record SoforDefterSatir(int Id, DateOnly Tarih, short SoforId, string Sofor, string? Plaka, string? SeferNo, KaynakTip KaynakTip, int? KaynakId,
+    string? Aciklama, decimal Verilen, decimal Alinan, decimal? Bakiye, string? Doviz, bool Iptal) : IRenkliSatir
+{
+    public string Islem => KaynakTip.Ad();
+    public string? Renk => Iptal ? "gri" : null;
+}
+
+public sealed record ZimmetSatir(int Id, ZimmetTuru Tur, string Ad, string? SeriNo, string? Sofor, string? Plaka, DateOnly Verilis, DateOnly? Iade,
+    ZimmetDurum Durum, decimal? Deger, string? Aciklama) : IRenkliSatir
+{
+    public string TurAd => Tur.Ad();
+    public string DurumAd => Durum.Ad();
+    public string? Renk => Durum == ZimmetDurum.Kayip ? "kirmizi" : Durum == ZimmetDurum.IadeEdildi ? "gri" : null;
+}
+
+public sealed record AtamaSatir(int Id, string Sofor, string Plaka, DateOnly Baslangic, DateOnly? Bitis)
+{
+    public bool Aktif => Bitis is null;
+}
+
+public sealed record HakedisOneri(short SoforId, string Sofor, TahakkukTuru Tur, decimal Tutar, int? SeferId, string? SeferNo, short? AracId, string Aciklama)
+{
+    public string TurAd => Tur.Ad();
+}
+
+public sealed record TahakkukSatir(int Id, int Donem, string Sofor, TahakkukTuru Tur, decimal Tutar, string? SeferNo, string? Plaka, string? Aciklama, bool Iptal) : IRenkliSatir
+{
+    public string TurAd => Tur.Ad();
+    public string DonemAd => $"{Donem % 100:D2}.{Donem / 100}";
+    public decimal Net => Tur == TahakkukTuru.Kesinti ? -Tutar : Tutar;
+    public string? Renk => Iptal ? "gri" : Tur == TahakkukTuru.Kesinti ? "turuncu" : null;
+}
+
+public sealed record SoforOzet(short Id, string AdSoyad, int CariId, string? Plaka, string? Telefon, decimal Bakiye, decimal AcikAvans, int OnayBekleyen,
+    int BuAySefer, decimal BuAyHakedis, int Zimmet, decimal? BakiyeLimiti)
+{
+    public bool LimitAsildi => BakiyeLimiti is > 0 && Bakiye > BakiyeLimiti;
 }

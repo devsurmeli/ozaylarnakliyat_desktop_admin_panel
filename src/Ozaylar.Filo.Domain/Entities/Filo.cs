@@ -73,6 +73,11 @@ public class Sofor : SilinebilirKayit<short>
     /// <summary>Şoförün personel carisi: avans/harcama/harcırah bakiyesi bu cari üzerinden akar.</summary>
     public int CariId { get; set; }
     public short? VarsayilanAracId { get; set; }
+    public decimal? MaasTutari { get; set; }
+    public PrimTipi PrimTipi { get; set; } = PrimTipi.Yok;
+    public decimal? PrimTutari { get; set; }
+    /// <summary>Şoför bakiyesi bu tutarı aşarsa uyarı (elinde fazla avans).</summary>
+    public decimal? BakiyeLimiti { get; set; }
     public bool Aktif { get; set; } = true;
     public string? Notlar { get; set; }
 

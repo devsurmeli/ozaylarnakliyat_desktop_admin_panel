@@ -1,0 +1,87 @@
+<UserControl x:Class="Ozaylar.Filo.Desktop.Kontroller.ListeGorunumu"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:alt="clr-namespace:Ozaylar.Filo.Desktop.Altyapi">
+    <UserControl.InputBindings>
+        <KeyBinding Key="Insert" Command="{Binding YeniKomut}" />
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding YeniKomut}" />
+        <KeyBinding Key="F2" Command="{Binding DuzenleKomut}" />
+        <KeyBinding Key="F5" Command="{Binding YenileKomut}" />
+        <KeyBinding Key="E" Modifiers="Control" Command="{Binding ExcelKomut}" />
+        <KeyBinding Key="P" Modifiers="Control" Command="{Binding PdfKomut}" />
+    </UserControl.InputBindings>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Komut çubuğu: Yeni/Düzenle/Sil + birincil eylemler + Diğer menüsü -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="False">
+            <ui:Button DockPanel.Dock="Left" Content="Yeni" Icon="{ui:SymbolIcon Add24}" Appearance="Primary" Command="{Binding YeniKomut}" ToolTip="Yeni kayıt (Ins / Ctrl+N)"
+                       Visibility="{Binding YeniVar, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,6,0" />
+            <ui:Button DockPanel.Dock="Left" Content="Aç" Icon="{ui:SymbolIcon Open24}" Command="{Binding DetayKomut}" ToolTip="Detay sayfası (Enter / çift tık)"
+                       Visibility="{Binding DetayVar, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,6,0" />
+            <ui:Button DockPanel.Dock="Left" Content="Düzenle" Icon="{ui:SymbolIcon Edit24}" Command="{Binding DuzenleKomut}" ToolTip="Düzenle (F2)"
+                       Visibility="{Binding DuzenleVar, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,6,0" />
+            <ui:Button DockPanel.Dock="Left" Content="{Binding SilMetni}" Icon="{ui:SymbolIcon Delete24}" Command="{Binding SilKomut}" ToolTip="Del"
+                       Visibility="{Binding SilVar, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,6,0" />
+            <ItemsControl DockPanel.Dock="Left" ItemsSource="{Binding BirincilEylemler}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ui:Button Content="{Binding Metin}" Command="{Binding Komut}" Margin="0,0,6,0">
+                            <ui:Button.Icon><ui:SymbolIcon Symbol="{Binding Ikon}" /></ui:Button.Icon>
+                        </ui:Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ui:Button x:Name="DigerBtn" DockPanel.Dock="Left" Content="Diğer  ▾" Icon="{ui:SymbolIcon MoreHorizontal24}" Click="DigerBtn_Click" Margin="0,0,6,0" />
+
+            <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon DocumentPdf24}" Command="{Binding PdfKomut}" ToolTip="PDF (Ctrl+P)" Margin="6,0,0,0" />
+            <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon DocumentTable24}" Command="{Binding ExcelKomut}" ToolTip="Excel (Ctrl+E)" Margin="6,0,0,0" />
+            <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding YenileKomut}" ToolTip="Yenile (F5)" />
+        </DockPanel>
+
+        <!-- Filtreler -->
+        <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Visibility="{Binding TarihFiltresi, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,12,0">
+                <ComboBox ItemsSource="{Binding OnAyarlar}" SelectedItem="{Binding SeciliOnAyar}" Width="120" Margin="0,0,6,0" ToolTip="Hızlı tarih aralığı" />
+                <DatePicker SelectedDate="{Binding BasTarih}" Width="130" />
+                <TextBlock Text="–" VerticalAlignment="Center" Margin="6,0" />
+                <DatePicker SelectedDate="{Binding BitTarih}" Width="130" />
+            </StackPanel>
+            <CheckBox Content="{Binding OnayFiltreMetni}" IsChecked="{Binding OnayFiltre}" Margin="0,0,12,0" VerticalAlignment="Center"
+                      Visibility="{Binding OnayFiltreMetni, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
+            <ui:TextBox x:Name="AramaKutusu" PlaceholderText="Listede ara... (Ctrl+F)" Icon="{ui:SymbolIcon Search24}" Width="320"
+                        Text="{Binding Arama, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+        </WrapPanel>
+
+        <DataGrid x:Name="Tablo" Grid.Row="2" ItemsSource="{Binding Gorunum}" SelectedItem="{Binding SeciliNesne}"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserAddRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" EnableRowVirtualization="True"
+                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                  MouseDoubleClick="Tablo_MouseDoubleClick" PreviewKeyDown="Tablo_PreviewKeyDown">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Renk}" Value="kirmizi"><Setter Property="Foreground" Value="#C42B1C" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Renk}" Value="turuncu"><Setter Property="Foreground" Value="#B35C00" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Renk}" Value="yesil"><Setter Property="Foreground" Value="#107C10" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Renk}" Value="gri"><Setter Property="Opacity" Value="0.55" /></DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+        </DataGrid>
+
+        <ui:ProgressRing Grid.Row="2" IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Visibility="{Binding Mesgul, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" />
+
+        <TextBlock Grid.Row="3" Text="{Binding AltBilgi}" Margin="2,8,0,0" Opacity="0.85" TextWrapping="Wrap" />
+    </Grid>
+</UserControl>

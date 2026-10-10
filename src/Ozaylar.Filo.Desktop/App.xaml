@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:alt="clr-namespace:Ozaylar.Filo.Desktop.Altyapi"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <ResourceDictionary>
@@ -19,6 +20,28 @@
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Margin" Value="0,4,0,0" />
             </Style>
+            <!-- Gösterge kartı (Kpi kaydı) -->
+            <DataTemplate x:Key="KpiSablon">
+                <Border Width="200" MinHeight="80" Margin="0,0,10,10" Padding="14,10" CornerRadius="8" BorderThickness="1"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Baslik}" FontSize="12" Opacity="0.75" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="Deger" Text="{Binding Deger}" FontSize="19" FontWeight="SemiBold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                        <ProgressBar x:Name="Cubuk" Value="{Binding Ilerleme, Mode=OneWay}" Maximum="100" Height="4" Margin="0,6,0,0" Visibility="Collapsed" />
+                        <TextBlock Text="{Binding Alt}" FontSize="12" Opacity="0.7" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Alt, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
+                    </StackPanel>
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding Renk}" Value="kirmizi"><Setter TargetName="Deger" Property="Foreground" Value="#C42B1C" /></DataTrigger>
+                    <DataTrigger Binding="{Binding Renk}" Value="turuncu"><Setter TargetName="Deger" Property="Foreground" Value="#B35C00" /></DataTrigger>
+                    <DataTrigger Binding="{Binding Renk}" Value="yesil"><Setter TargetName="Deger" Property="Foreground" Value="#107C10" /></DataTrigger>
+                    <DataTrigger Binding="{Binding Ilerleme, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" Value="Visible">
+                        <Setter TargetName="Cubuk" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
             <Style x:Key="BolumBaslik" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="16" />
                 <Setter Property="FontWeight" Value="SemiBold" />

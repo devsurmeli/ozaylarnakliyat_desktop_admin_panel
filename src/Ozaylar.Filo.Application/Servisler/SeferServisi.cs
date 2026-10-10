@@ -306,7 +306,11 @@ public sealed class SeferServisi(IFiloDbContextFactory factory, IKullaniciOturum
         var km = s.DonusKm ?? s.CikisKm;
         if (km is null) return;
         var arac = await db.Araclar.FindAsync([s.AracId.Value], ct);
-        if (arac is not null && km > arac.GuncelKm) arac.GuncelKm = km.Value;
+        if (arac is not null && km > arac.GuncelKm)
+        {
+            arac.GuncelKm = km.Value;
+            AracKm.Kaydet(db, s.AracId.Value, s.DonusTarihi ?? s.TeslimTarihi ?? s.CikisTarihi ?? s.PlanlananTarih.ToDateTime(TimeOnly.MinValue), km.Value, KmKaynak.Sefer, s.Id > 0 ? s.Id : null);
+        }
     }
 
     private static async Task<decimal> AyarSayiAsync(IFiloDbContext db, string anahtar, decimal varsayilan, CancellationToken ct)
@@ -376,7 +380,7 @@ public sealed class SeferServisi(IFiloDbContextFactory factory, IKullaniciOturum
             && h.TersKayitId == null && !db.CariHareketleri.Any(t => t.TersKayitId == h.Id), ct);
         if (islenmis) return;
         Defter.Cari(db, s.TaseronCariId.Value, tarih, 0, s.TaseronBedel.Value, KaynakTip.TaseronBedel, s.Id,
-            $"Taşeron bedeli - {s.SeferNo} {s.TaseronPlaka}", s.TaseronParaBirimi, s.TaseronKur);
+            $"Taşeron bedeli - {s.SeferNo} {s.TaseronPlaka}", s.TaseronParaBirimi, s.TaseronKur, seferId: s.Id);
     }
 
     private static async Task CakismaKontrolAktifAsync(IFiloDbContext db, Sefer s, List<short> soforler, CancellationToken ct)

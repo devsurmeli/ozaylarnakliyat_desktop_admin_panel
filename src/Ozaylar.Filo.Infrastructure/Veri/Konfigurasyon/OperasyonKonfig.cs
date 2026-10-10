@@ -262,27 +262,114 @@ internal sealed class LastikHareketKonfig : IEntityTypeConfiguration<LastikHarek
     }
 }
 
-internal sealed class AracFinansmanKonfig : IEntityTypeConfiguration<AracFinansman>
+internal sealed class KrediKonfig : IEntityTypeConfiguration<Kredi>
 {
-    public void Configure(EntityTypeBuilder<AracFinansman> b)
+    public void Configure(EntityTypeBuilder<Kredi> b)
     {
-        b.ToTable("AracFinansman");
-        b.Property(x => x.SozlesmeNo).HasMaxLength(40);
-        b.Property(x => x.Aciklama).HasMaxLength(300);
-        b.Property(x => x.AylikFaizOrani).HasPrecision(7, 4);
-        b.HasOne(x => x.FinansKurumu).WithMany().HasForeignKey(x => x.FinansKurumuCariId);
+        b.ToTable("Kredi", t => t.HasCheckConstraint("CK_Kredi_Anapara", "[Anapara] > 0"));
+        b.Property(x => x.KrediNo).HasMaxLength(40);
+        b.Property(x => x.Aciklama).HasMaxLength(500);
+        b.Property(x => x.FaizOrani).HasPrecision(9, 4);
+        b.Property(x => x.BsmvOrani).HasPrecision(5, 2);
+        b.Property(x => x.KkdfOrani).HasPrecision(5, 2);
+        b.Property(x => x.GecikmeArtisYuzde).HasPrecision(5, 2);
+        b.Property(x => x.KullandirimKur).HasPrecision(18, 6);
+        b.Ignore(x => x.AylikOran);
+        b.HasOne(x => x.Banka).WithMany().HasForeignKey(x => x.BankaCariId);
+        b.HasOne<KasaHesap>().WithMany().HasForeignKey(x => x.KullandirimKasaHesapId);
+        b.HasIndex(x => new { x.BankaCariId, x.Durum });
     }
 }
 
-internal sealed class FinansmanTaksitKonfig : IEntityTypeConfiguration<FinansmanTaksit>
+internal sealed class KrediTaksitKonfig : IEntityTypeConfiguration<KrediTaksit>
 {
-    public void Configure(EntityTypeBuilder<FinansmanTaksit> b)
+    public void Configure(EntityTypeBuilder<KrediTaksit> b)
     {
-        b.ToTable("FinansmanTaksit");
-        b.HasOne(x => x.AracFinansman).WithMany(f => f.Taksitler).HasForeignKey(x => x.AracFinansmanId).OnDelete(DeleteBehavior.Cascade);
-        b.HasOne<KasaHesap>().WithMany().HasForeignKey(x => x.OdemeKasaHesapId);
-        b.HasIndex(x => new { x.VadeTarihi, x.OdemeTarihi });
-        b.HasIndex(x => new { x.AracFinansmanId, x.TaksitNo }).IsUnique();
+        b.ToTable("KrediTaksit");
+        b.Ignore(x => x.KalanTutar);
+        b.HasOne(x => x.Kredi).WithMany(k => k.Taksitler).HasForeignKey(x => x.KrediId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.KrediId, x.Versiyon, x.TaksitNo }).IsUnique();
+        b.HasIndex(x => new { x.VadeTarihi, x.Durum });
+    }
+}
+
+internal sealed class KrediOdemeKonfig : IEntityTypeConfiguration<KrediOdeme>
+{
+    public void Configure(EntityTypeBuilder<KrediOdeme> b)
+    {
+        b.ToTable("KrediOdeme", t => t.HasCheckConstraint("CK_KrediOdeme_Tutar", "[Tutar] > 0"));
+        b.Ignore(x => x.FinansmanGideri);
+        b.Property(x => x.Kur).HasPrecision(18, 6);
+        b.Property(x => x.Aciklama).HasMaxLength(200);
+        b.HasOne(x => x.Kredi).WithMany().HasForeignKey(x => x.KrediId);
+        b.HasOne<KrediTaksit>().WithMany().HasForeignKey(x => x.KrediTaksitId);
+        b.HasOne<KasaHesap>().WithMany().HasForeignKey(x => x.KasaHesapId);
+        b.HasIndex(x => new { x.KrediId, x.Tarih });
+        b.HasIndex(x => x.Tarih);
+    }
+}
+
+internal sealed class KrediAracKonfig : IEntityTypeConfiguration<KrediArac>
+{
+    public void Configure(EntityTypeBuilder<KrediArac> b)
+    {
+        b.ToTable("KrediArac", t => t.HasCheckConstraint("CK_KrediArac_Hedef",
+            "([AracId] IS NOT NULL AND [DorseId] IS NULL) OR ([AracId] IS NULL AND [DorseId] IS NOT NULL)"));
+        b.Property(x => x.PayYuzde).HasPrecision(5, 2);
+        b.HasOne<Kredi>().WithMany(k => k.Araclar).HasForeignKey(x => x.KrediId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => x.AracId).HasFilter("[AracId] IS NOT NULL");
+    }
+}
+
+internal sealed class BankaLimitKonfig : IEntityTypeConfiguration<BankaLimit>
+{
+    public void Configure(EntityTypeBuilder<BankaLimit> b)
+    {
+        b.ToTable("BankaLimit");
+        b.Property(x => x.Teminat).HasMaxLength(300);
+        b.HasOne(x => x.Banka).WithMany().HasForeignKey(x => x.BankaCariId);
+    }
+}
+
+internal sealed class SoforAracAtamaKonfig : IEntityTypeConfiguration<SoforAracAtama>
+{
+    public void Configure(EntityTypeBuilder<SoforAracAtama> b)
+    {
+        b.ToTable("SoforAracAtama", t => t.HasCheckConstraint("CK_SoforAracAtama_Tarih", "[Bitis] IS NULL OR [Bitis] >= [Baslangic]"));
+        b.HasIndex(x => new { x.SoforId, x.Baslangic });
+        b.HasIndex(x => new { x.AracId, x.Baslangic });
+    }
+}
+
+internal sealed class ZimmetKonfig : IEntityTypeConfiguration<Zimmet>
+{
+    public void Configure(EntityTypeBuilder<Zimmet> b)
+    {
+        b.ToTable("Zimmet");
+        b.Property(x => x.Ad).HasMaxLength(100);
+        b.Property(x => x.SeriNo).HasMaxLength(50);
+        b.Property(x => x.Aciklama).HasMaxLength(300);
+        b.HasIndex(x => new { x.SoforId, x.Durum });
+    }
+}
+
+internal sealed class PersonelTahakkukKonfig : IEntityTypeConfiguration<PersonelTahakkuk>
+{
+    public void Configure(EntityTypeBuilder<PersonelTahakkuk> b)
+    {
+        b.ToTable("PersonelTahakkuk", t => t.HasCheckConstraint("CK_PersonelTahakkuk_Tutar", "[Tutar] > 0"));
+        b.Ignore(x => x.Kesinti);
+        b.Property(x => x.Aciklama).HasMaxLength(200);
+        b.HasIndex(x => new { x.SoforId, x.Donem });
+    }
+}
+
+internal sealed class AracKmKayitKonfig : IEntityTypeConfiguration<AracKmKayit>
+{
+    public void Configure(EntityTypeBuilder<AracKmKayit> b)
+    {
+        b.ToTable("AracKmKayit");
+        b.HasIndex(x => new { x.AracId, x.Zaman });
     }
 }
 

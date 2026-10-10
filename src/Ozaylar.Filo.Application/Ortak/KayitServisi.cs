@@ -114,6 +114,8 @@ public static class KayitIzinleri
         [typeof(Domain.Entities.BakimPlani)] = (Izinler.BakimGor, Izinler.BakimYaz),
         [typeof(Domain.Entities.Lastik)] = (Izinler.BakimGor, Izinler.BakimYaz),
         [typeof(Domain.Entities.Kullanici)] = (Izinler.KullaniciYonet, Izinler.KullaniciYonet),
+        [typeof(Domain.Entities.BankaLimit)] = (Izinler.FinansmanGor, Izinler.FinansmanYaz),
+        [typeof(Domain.Entities.Zimmet)] = (Izinler.SoforHesapGor, Izinler.SoforHesapYaz),
     };
 
     public static string Gor<T>() => Harita.TryGetValue(typeof(T), out var i) ? i.Gor : Izinler.TanimGor;

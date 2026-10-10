@@ -134,6 +134,10 @@ public enum KaynakTip : byte
     [Description("Taşeron Bedeli")] TaseronBedel = 17,
     [Description("Ters Kayıt")] TersKayit = 18,
     [Description("Ekstre Aktarımı")] IceAktarim = 19,
+    [Description("Kredi Kullanımı")] KrediKullanim = 20,
+    [Description("Kredi Ödemesi")] KrediOdeme = 21,
+    [Description("Şoför Tahsilatı")] SoforTahsilat = 22,
+    [Description("Hakediş")] Hakedis = 23,
 }
 
 public enum FaturaTipi : byte
@@ -190,11 +194,6 @@ public enum LastikDurum : byte
     [Description("Hurda")] Hurda = 9,
 }
 
-public enum FinansmanTipi : byte
-{
-    [Description("Kredi")] Kredi = 1,
-    [Description("Leasing")] Leasing = 2,
-}
 
 public enum IceAktarimTur : byte
 {
@@ -247,7 +246,8 @@ public enum EkHedef : byte
     [Description("Bakım")] Bakim = 10,
     [Description("Avans")] Avans = 11,
     [Description("Ceza")] Ceza = 12,
-    [Description("Finansman")] Finansman = 13,
+    [Description("Kredi")] Finansman = 13,
+    [Description("Zimmet")] Zimmet = 14,
 }
 
 public enum AuditIslem : byte

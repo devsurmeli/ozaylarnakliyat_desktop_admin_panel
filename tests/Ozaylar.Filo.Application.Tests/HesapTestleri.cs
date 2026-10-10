@@ -46,10 +46,14 @@ public class HesapTestleri
         Assert.Throws<DomainException>(() => HarcirahHesap.GunSayisi(new(2026, 3, 2), new(2026, 3, 1)));
     }
 
+    private static List<KrediPlanSatiri> Plan(decimal anapara, decimal aylikYuzde, short vade, DateOnly ilk, decimal bsmv = 0, decimal kkdf = 0,
+        byte odemesiz = 0, PlanYontemi yontem = PlanYontemi.EsitTaksit, decimal? balon = null) =>
+        KrediHesap.PlanOlustur(new KrediPlanParametre(anapara, aylikYuzde / 100m, bsmv, kkdf, vade, ilk, odemesiz, yontem, balon));
+
     [Fact]
-    public void Taksit_plani_anaparayi_tam_kapatir_ve_faiz_azalir()
+    public void Esit_taksit_plani_anaparayi_tam_kapatir_ve_faiz_azalir()
     {
-        var plan = TaksitPlani.Olustur(1_000_000m, 3m, 24, new DateOnly(2026, 1, 15));
+        var plan = Plan(1_000_000m, 3m, 24, new DateOnly(2026, 1, 15));
         Assert.Equal(24, plan.Count);
         Assert.Equal(1_000_000m, plan.Sum(p => p.Anapara));
         Assert.Equal(0m, plan[^1].KalanAnapara);
@@ -62,11 +66,112 @@ public class HesapTestleri
     }
 
     [Fact]
-    public void Faizsiz_taksit_plani_esit_bolunur()
+    public void Bsmv_ve_kkdf_faiz_uzerinden_hesaplanir_ve_taksit_sabit_kalir()
     {
-        var plan = TaksitPlani.Olustur(1_000m, 0m, 3, new DateOnly(2026, 1, 31));
+        var plan = Plan(1_000_000m, 3m, 24, new DateOnly(2026, 1, 15), bsmv: 5, kkdf: 15);
+        Assert.Equal(30_000m, plan[0].Faiz);
+        Assert.Equal(1_500m, plan[0].Bsmv);
+        Assert.Equal(4_500m, plan[0].Kkdf);
+        Assert.Equal(1_000_000m, plan.Sum(p => p.Anapara));
+        Assert.All(plan.Take(23), p => Assert.InRange(Math.Abs(p.Toplam - plan[0].Toplam), 0m, 0.02m));
+        // Vergili taksit vergisizden büyük
+        Assert.True(plan[0].Toplam > Plan(1_000_000m, 3m, 24, new DateOnly(2026, 1, 15))[0].Toplam);
+    }
+
+    [Fact]
+    public void Esit_anapara_planinda_anapara_sabit_taksit_azalir()
+    {
+        var plan = Plan(1_200_000m, 2.5m, 12, new DateOnly(2026, 1, 10), yontem: PlanYontemi.EsitAnapara);
+        Assert.All(plan, p => Assert.Equal(100_000m, p.Anapara));
+        Assert.True(plan[0].Toplam > plan[^1].Toplam);
+        Assert.Equal(0m, plan[^1].KalanAnapara);
+    }
+
+    [Fact]
+    public void Odemesiz_donemde_yalniz_faiz_odenir()
+    {
+        var plan = Plan(600_000m, 3m, 12, new DateOnly(2026, 1, 10), odemesiz: 3);
+        Assert.All(plan.Take(3), p => { Assert.Equal(0m, p.Anapara); Assert.Equal(18_000m, p.Faiz); });
+        Assert.Equal(600_000m, plan.Sum(p => p.Anapara));
+    }
+
+    [Fact]
+    public void Balon_planinda_son_taksit_buyuk_ve_anapara_kapanir()
+    {
+        var plan = Plan(1_000_000m, 2m, 24, new DateOnly(2026, 1, 10), yontem: PlanYontemi.Balon, balon: 400_000m);
+        Assert.Equal(1_000_000m, plan.Sum(p => p.Anapara));
+        // Son ödeme = normal taksit + balon
+        Assert.InRange(plan[^1].Toplam - plan[0].Toplam, 399_999m, 400_001m);
+        Assert.All(plan.Take(23), p => Assert.Equal(plan[0].Toplam, p.Toplam));
+    }
+
+    [Fact]
+    public void Faizsiz_plan_esit_bolunur_ve_ay_sonu_vadeleri_kayar()
+    {
+        var plan = Plan(1_000m, 0m, 3, new DateOnly(2026, 1, 31));
         Assert.Equal([333.33m, 333.33m, 333.34m], plan.Select(p => p.Anapara));
         Assert.Equal(new DateOnly(2026, 2, 28), plan[1].Vade);
+    }
+
+    [Fact]
+    public void Odeme_once_gecikme_ve_vergilere_sonra_anaparaya_dagitilir()
+    {
+        var d = KrediHesap.Dagit(1_000m, gecikme: 100m, bsmv: 50m, kkdf: 0m, faiz: 1_000m, anapara: 5_000m);
+        Assert.Equal((100m, 50m, 0m, 850m, 0m), (d.Gecikme, d.Bsmv, d.Kkdf, d.Faiz, d.Anapara));
+        Assert.Throws<DomainException>(() => KrediHesap.Dagit(10_000m, 0, 0, 0, 100m, 100m));
+    }
+
+    [Fact]
+    public void Gecikme_faizi_akdi_orana_artis_ve_vergi_ekler()
+    {
+        // 10.000 × %3 × 1,30 × 30/30 = 390; +%5 BSMV = 409,50
+        Assert.Equal(409.50m, KrediHesap.GecikmeFaizi(10_000m, 0.03m, 30m, 30, 5m, 0m));
+        Assert.Equal(0m, KrediHesap.GecikmeFaizi(10_000m, 0.03m, 30m, 0, 5m, 0m));
+    }
+
+    [Fact]
+    public void Ara_odeme_sonrasi_vadeyi_kisalt_taksiti_korur_taksiti_dusur_vadeyi_korur()
+    {
+        var plan = Plan(1_000_000m, 2.5m, 36, new DateOnly(2026, 1, 10));
+        var taksit = plan[0].Toplam;
+        var kalan = plan[11].KalanAnapara - 200_000m; // 12. taksitten sonra 200.000 ara ödeme
+        var kisa = KrediHesap.YenidenPlanla(kalan, 0.025m, 0, 0, 24, plan[12].Vade, taksit, YenidenPlanModu.VadeyiKisalt, 13);
+        var dusuk = KrediHesap.YenidenPlanla(kalan, 0.025m, 0, 0, 24, plan[12].Vade, taksit, YenidenPlanModu.TaksitiDusur, 13);
+        Assert.True(kisa.Count < 24);
+        Assert.InRange(kisa[0].Toplam, taksit - 1m, taksit + 1m);
+        Assert.Equal(24, dusuk.Count);
+        Assert.True(dusuk[0].Toplam < taksit);
+        Assert.Equal((short)13, kisa[0].No);
+        Assert.Equal(kalan, kisa.Sum(p => p.Anapara));
+        Assert.Equal(kalan, dusuk.Sum(p => p.Anapara));
+    }
+
+    [Theory]
+    [InlineData(1250.50, "BinİkiYüzElliTürkLirasıElliKuruş")]
+    [InlineData(1_000_000, "BirMilyonTürkLirası")]
+    [InlineData(101, "YüzBirTürkLirası")]
+    [InlineData(0, "SıfırTürkLirası")]
+    [InlineData(21_345.07, "YirmiBirBinÜçYüzKırkBeşTürkLirasıYediKuruş")]
+    public void Tutar_yaziya_cevrilir(double tutar, string beklenen) => Assert.Equal(beklenen, TutarYazi.Yaz((decimal)tutar));
+
+    [Fact]
+    public void Banka_plani_basliklar_esnek_eslenir_ve_kalan_anapara_hesaplanir()
+    {
+        List<Dictionary<string, string?>> satirlar =
+        [
+            new() { ["Taksit No"] = "1", ["Vade Tarihi"] = "15.02.2026", ["Anapara"] = "4.950,25", ["Faiz"] = "3.000,00", ["BSMV"] = "150,00", ["Taksit Tutarı"] = "8.100,25" },
+            new() { ["Taksit No"] = "2", ["Vade Tarihi"] = "15.03.2026", ["Anapara"] = "5.049,75", ["Faiz"] = "2.851,49", ["BSMV"] = "142,57", ["Taksit Tutarı"] = "8.043,81" },
+            new() { ["Taksit No"] = "", ["Vade Tarihi"] = "TOPLAM", ["Anapara"] = "10.000,00", ["Faiz"] = "", ["BSMV"] = "", ["Taksit Tutarı"] = "" },
+        ];
+        var plan = KrediServisi.BankaPlaniAyristir(satirlar, 10_000m);
+        Assert.Equal(2, plan.Count);
+        Assert.Equal(4_950.25m, plan[0].Anapara);
+        Assert.Equal(150m, plan[0].Bsmv);
+        Assert.Equal(8_100.25m, plan[0].Toplam);
+        Assert.Equal(5_049.75m, plan[0].KalanAnapara);
+        Assert.Equal(0m, plan[1].KalanAnapara);
+        Assert.Equal(new DateOnly(2026, 3, 15), plan[1].VadeTarihi);
+        Assert.Throws<DomainException>(() => KrediServisi.BankaPlaniAyristir(satirlar, 50_000m));
     }
 
     [Fact]

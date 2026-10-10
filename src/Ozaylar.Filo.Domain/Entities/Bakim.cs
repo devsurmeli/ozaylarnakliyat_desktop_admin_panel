@@ -93,42 +93,6 @@ public class LastikHareket : Kayit<int>
     public Dorse? Dorse { get; set; }
 }
 
-public class AracFinansman : SilinebilirKayit<short>
-{
-    public short? AracId { get; set; }
-    public short? DorseId { get; set; }
-    public FinansmanTipi Tip { get; set; } = FinansmanTipi.Kredi;
-    public int FinansKurumuCariId { get; set; }
-    public string? SozlesmeNo { get; set; }
-    public DateOnly BaslangicTarihi { get; set; }
-    public decimal AnaparaTutar { get; set; }
-    public ParaBirimi ParaBirimi { get; set; } = ParaBirimi.TRY;
-    /// <summary>Aylık faiz oranı (%), ör. 3.25</summary>
-    public decimal AylikFaizOrani { get; set; }
-    public short VadeSayisi { get; set; }
-    public string? Aciklama { get; set; }
-    public bool Aktif { get; set; } = true;
-
-    public Arac? Arac { get; set; }
-    public Dorse? Dorse { get; set; }
-    public Cari? FinansKurumu { get; set; }
-    public List<FinansmanTaksit> Taksitler { get; set; } = [];
-}
-
-public class FinansmanTaksit : Kayit<int>
-{
-    public short AracFinansmanId { get; set; }
-    public short TaksitNo { get; set; }
-    public DateOnly VadeTarihi { get; set; }
-    public decimal Anapara { get; set; }
-    public decimal Faiz { get; set; }
-    public decimal Toplam { get; set; }
-    public DateOnly? OdemeTarihi { get; set; }
-    public byte? OdemeKasaHesapId { get; set; }
-
-    public AracFinansman? AracFinansman { get; set; }
-}
-
 public class Evrak : SilinebilirKayit<int>
 {
     public short EvrakTuruId { get; set; }

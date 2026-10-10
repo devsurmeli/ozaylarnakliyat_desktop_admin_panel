@@ -127,7 +127,118 @@ public sealed class FormPenceresi : FluentWindow
 
         if (salt) foreach (var (_, k, _) in _alanlar) k.IsEnabled = false;
         GorunurlukGuncelle();
-        Loaded += (_, _) => _alanlar.FirstOrDefault(x => x.Kontrol.IsEnabled && x.Kontrol.Focusable).Kontrol?.Focus();
+        Loaded += (_, _) => IlkAlanaOdaklan();
+        if (!salt) PreviewKeyDown += KlavyeAsync;
+    }
+
+    private void IlkAlanaOdaklan()
+    {
+        var ilk = _alanlar.FirstOrDefault(x => x.Kontrol.IsEnabled && x.Kontrol.Visibility == Visibility.Visible).Kontrol;
+        if (ilk is null) return;
+        if (ilk.Focusable) ilk.Focus();
+        else ilk.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+    }
+
+    /// <summary>Klavye ile hızlı giriş: Enter sonraki alana geçer (son alanda kaydeder), Ctrl+S kaydeder.</summary>
+    private async void KlavyeAsync(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            await KaydetAsync();
+            return;
+        }
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None || Keyboard.FocusedElement is not DependencyObject odak) return;
+        if (odak is System.Windows.Controls.TextBox { AcceptsReturn: true } or System.Windows.Controls.Primitives.ButtonBase) return;
+        var cb = odak as ComboBox ?? Ata<ComboBox>(odak);
+        if (cb is { IsDropDownOpen: true })
+        {
+            // Açık listede seçim yoksa ilk (filtrelenmiş) seçenek seçilir.
+            if (cb.SelectedItem is null && cb.Items.Count > 0) cb.SelectedIndex = 0;
+            cb.IsDropDownOpen = false;
+        }
+        e.Handled = true;
+        var son = _alanlar.LastOrDefault(x => x.Kontrol.Visibility == Visibility.Visible && x.Kontrol.IsEnabled).Kontrol;
+        if (son is not null && (ReferenceEquals(son, odak) || son.IsAncestorOf(odak))) await KaydetAsync();
+        else (odak as UIElement)?.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+    }
+
+    private static T? Ata<T>(DependencyObject? d) where T : DependencyObject
+    {
+        while (d is not null)
+        {
+            d = d is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D ? System.Windows.Media.VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+            if (d is T t) return t;
+        }
+        return null;
+    }
+
+    /// <summary>Tarih kutusu kısayolları: B = bugün, D = dün, + / − = bir gün ileri / geri.</summary>
+    private static void TarihKisayollari(DatePicker dp)
+    {
+        dp.ToolTip ??= "Kısayol: B = bugün, D = dün, + / − = gün ileri / geri";
+        dp.PreviewKeyDown += (_, e) =>
+        {
+            if (Keyboard.Modifiers != ModifierKeys.None) return;
+            DateTime? yeni = e.Key switch
+            {
+                Key.B => DateTime.Today,
+                Key.D => DateTime.Today.AddDays(-1),
+                Key.Add or Key.OemPlus => (dp.SelectedDate ?? DateTime.Today).AddDays(1),
+                Key.Subtract or Key.OemMinus => (dp.SelectedDate ?? DateTime.Today).AddDays(-1),
+                _ => null,
+            };
+            if (yeni is null) return;
+            dp.SelectedDate = yeni;
+            e.Handled = true;
+        };
+    }
+
+    private static ListCollectionView Gorunum(IEnumerable? secenekler) => new((secenekler?.Cast<object>() ?? []).ToList());
+
+    private static string SecimAdi(object o) => o.GetType().GetProperty("Ad")?.GetValue(o) as string ?? o.ToString() ?? "";
+
+    /// <summary>
+    /// Aramalı seçim: yazılan metni içeren seçenekler listelenir (Türkçe büyük/küçük harf duyarsız, ör. "ozy 103" → "34 OZY 103").
+    /// Odaktan çıkarken tek eşleşme kalmışsa otomatik seçilir.
+    /// </summary>
+    private static void AramaliYap(ComboBox cb, IEnumerable? secenekler)
+    {
+        cb.ItemsSource = Gorunum(secenekler);
+        ListCollectionView G() => (ListCollectionView)cb.ItemsSource;
+        cb.IsTextSearchEnabled = false;
+        var tr = Kultur.Tr.CompareInfo;
+        bool Eslesir(object o, string metin) => metin.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .All(p => tr.IndexOf(SecimAdi(o), p, System.Globalization.CompareOptions.IgnoreCase) >= 0);
+        void Filtrele(System.Windows.Controls.TextBox tb)
+        {
+            if (cb.SelectedItem is { } s && SecimAdi(s) == tb.Text || string.IsNullOrWhiteSpace(tb.Text))
+            {
+                if (G().Filter is not null) G().Filter = null;
+                return;
+            }
+            var metin = tb.Text;
+            G().Filter = o => Eslesir(o, metin);
+            if (cb.IsKeyboardFocusWithin && !cb.IsDropDownOpen)
+            {
+                // Liste açılınca ComboBox metni seçili hale getirir; sonraki tuş yazılanı silmesin diye imleç sona alınır.
+                var konum = tb.CaretIndex;
+                cb.IsDropDownOpen = true;
+                tb.SelectionLength = 0;
+                tb.CaretIndex = konum;
+            }
+        }
+        cb.Loaded += (_, _) =>
+        {
+            if (cb.Template?.FindName("PART_EditableTextBox", cb) is System.Windows.Controls.TextBox tb)
+                tb.TextChanged += (_, _) => { if (tb.IsKeyboardFocusWithin) Filtrele(tb); };
+        };
+        cb.LostKeyboardFocus += (_, _) =>
+        {
+            if (cb.IsKeyboardFocusWithin) return;
+            if (cb.SelectedItem is null && !string.IsNullOrWhiteSpace(cb.Text) && G().Count == 1) cb.SelectedItem = G().GetItemAt(0);
+            if (cb.SelectedItem is not null) G().Filter = null;
+        };
     }
 
     /// <summary>Formu modal açar; kaydedilirse true.</summary>
@@ -152,7 +263,7 @@ public sealed class FormPenceresi : FluentWindow
         var x = _alanlar.FirstOrDefault(a => a.Alan.Yol == yol);
         if (x.Kontrol is ComboBox cb)
         {
-            cb.ItemsSource = secenekler;
+            cb.ItemsSource = Gorunum(secenekler);
             BindingOperations.GetBindingExpression(cb, Selector.SelectedValueProperty)?.UpdateTarget();
         }
     }
@@ -241,6 +352,7 @@ public sealed class FormPenceresi : FluentWindow
             case AlanTipi.Tarih:
             {
                 var dp = new DatePicker { SelectedDateFormat = DatePickerFormat.Short };
+                TarihKisayollari(dp);
                 dp.SetBinding(DatePicker.SelectedDateProperty, B(TarihDonusturucu.Ornek));
                 k = dp;
                 break;
@@ -251,6 +363,7 @@ public sealed class FormPenceresi : FluentWindow
                 var panel = new DockPanel();
                 var saat = new TextBox { Width = 70, Margin = new Thickness(6, 0, 0, 0), PlaceholderText = "SS:dd" };
                 var dp = new DatePicker();
+                TarihKisayollari(dp);
                 DockPanel.SetDock(saat, Dock.Right);
                 panel.Children.Add(saat);
                 panel.Children.Add(dp);
@@ -285,10 +398,10 @@ public sealed class FormPenceresi : FluentWindow
             {
                 var cb = new ComboBox
                 {
-                    ItemsSource = a.Secenekler, IsEditable = true, IsTextSearchEnabled = true,
-                    SelectedValuePath = SecimDegerYolu(a.Secenekler), DisplayMemberPath = "Ad",
+                    IsEditable = true, SelectedValuePath = SecimDegerYolu(a.Secenekler), DisplayMemberPath = "Ad",
                     IsEnabled = !a.SaltOkunur,
                 };
+                AramaliYap(cb, a.Secenekler);
                 cb.SetBinding(Selector.SelectedValueProperty, B(TipDonusturucu.Ornek));
                 // Zorunlu olmayan seçimde "temizle" için Delete tuşu.
                 if (!a.Zorunlu) cb.PreviewKeyDown += (_, e) => { if (e.Key == Key.Delete) { cb.SelectedIndex = -1; cb.SelectedValue = null; } };

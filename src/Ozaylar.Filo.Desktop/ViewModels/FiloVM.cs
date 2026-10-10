@@ -33,6 +33,8 @@ public sealed class AracListeVM(IDisaAktarici d, AracServisi servis, Secimler s)
     ];
 
     protected override object Id(AracSatir s) => s.Id;
+    public override bool DetayVar => true;
+    protected override Task DetayAsync(AracSatir satir) => Detay.Arac(satir.Id);
     protected override async Task<IEnumerable<AracSatir>> YukleAsync() => await servis.SatirlarAsync(!OnayFiltre);
 
     protected override Task<IReadOnlyList<FormAlani>> AlanlarAsync(Arac m, bool yeni) => Task.FromResult<IReadOnlyList<FormAlani>>(
@@ -127,6 +129,8 @@ public sealed class SoforListeVM(IDisaAktarici d, IKayitServisi<Sofor> servis, S
     protected override double FormGenislik => 900;
     protected override IQueryable<Sofor> Sorgu(IQueryable<Sofor> q) => q.Include(x => x.VarsayilanArac).Where(x => OnayFiltre || x.Aktif).OrderBy(x => x.Ad).ThenBy(x => x.Soyad);
     protected override object Id(Sofor s) => s.Id;
+    public override bool DetayVar => true;
+    protected override Task DetayAsync(Sofor satir) => Detay.Sofor(satir.Id);
 
     public override IReadOnlyList<Kolon> Kolonlar { get; } =
     [
@@ -159,6 +163,11 @@ public sealed class SoforListeVM(IDisaAktarici d, IKayitServisi<Sofor> servis, S
         new() { Etiket = "İşe giriş", Yol = nameof(Sofor.IseGiris), Tip = AlanTipi.Tarih },
         new() { Etiket = "İşten çıkış", Yol = nameof(Sofor.IstenCikis), Tip = AlanTipi.Tarih },
         new() { Etiket = "Aktif", Yol = nameof(Sofor.Aktif), Tip = AlanTipi.Onay },
+        FormAlani.Bolum("Hakediş (iç takip)"),
+        new() { Etiket = "Aylık maaş (TL)", Yol = nameof(Sofor.MaasTutari), Tip = AlanTipi.Para, Ipucu = "Hakediş hesabında her ay önerilir" },
+        FormAlani.EnumSecim<PrimTipi>("Prim tipi", nameof(Sofor.PrimTipi)),
+        new() { Etiket = "Prim tutarı", Yol = nameof(Sofor.PrimTutari), Tip = AlanTipi.Para, Gorunur = _ => m.PrimTipi != PrimTipi.Yok, Ipucu = "Sefer başı TL veya km başı TL" },
+        new() { Etiket = "Bakiye uyarı limiti", Yol = nameof(Sofor.BakiyeLimiti), Tip = AlanTipi.Para, Ipucu = "Şoförün elindeki para bu tutarı aşınca uyarı verilir" },
         new() { Etiket = "Notlar", Yol = nameof(Sofor.Notlar), Tip = AlanTipi.CokSatir, MaksUzunluk = 500 },
     ];
 }

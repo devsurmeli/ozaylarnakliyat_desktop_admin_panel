@@ -35,6 +35,8 @@ internal sealed class CariHareketKonfig : IEntityTypeConfiguration<CariHareket>
         b.HasIndex(x => new { x.CariId, x.Tarih }).IncludeProperties(x => new { x.Borc, x.Alacak });
         b.HasIndex(x => new { x.KaynakTip, x.KaynakId });
         b.HasIndex(x => x.TersKayitId).HasFilter("[TersKayitId] IS NOT NULL");
+        b.HasIndex(x => new { x.AracId, x.Tarih }).HasFilter("[AracId] IS NOT NULL");
+        b.HasIndex(x => x.SeferId).HasFilter("[SeferId] IS NOT NULL");
     }
 }
 

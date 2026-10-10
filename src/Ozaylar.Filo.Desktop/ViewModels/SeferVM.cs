@@ -12,6 +12,8 @@ using Wpf.Ui.Controls;
 
 namespace Ozaylar.Filo.Desktop.ViewModels;
 
+public enum SeferEylemi { YolaCikti, TeslimEdildi, Kapat, YenidenAc, Iptal, Masraf, Avans, Harcirah, Duraklar }
+
 /// <summary>Sefer formu modeli: sefer + çoklu şoför + taşeron anahtarı.</summary>
 public sealed class SeferFormModel
 {
@@ -43,8 +45,8 @@ public sealed class SeferListeVM(
 
     public override IReadOnlyList<Eylem> Eylemler =>
     [
-        E("Yola Çıktı", SymbolRegular.Play24, () => DurumAsync(SeferDurum.Yolda)),
-        E("Teslim Edildi", SymbolRegular.CheckboxChecked24, () => DurumAsync(SeferDurum.TeslimEdildi)),
+        E("Yola Çıktı", SymbolRegular.Play24, () => DurumAsync(SeferDurum.Yolda), true),
+        E("Teslim Edildi", SymbolRegular.CheckboxChecked24, () => DurumAsync(SeferDurum.TeslimEdildi), true),
         E("Kapat", SymbolRegular.LockClosed24, KapatAsync),
         E("Yeniden Aç", SymbolRegular.ArrowUndo24, () => DurumAsync(SeferDurum.TeslimEdildi, "Seçili sefer yeniden açılsın mı? (Taşeron kaydı ters çevrilir)")),
         E("İptal", SymbolRegular.Dismiss24, () => DurumAsync(SeferDurum.Iptal, "Seçili sefer iptal edilsin mi?")),
@@ -55,6 +57,57 @@ public sealed class SeferListeVM(
         E("Kârlılık", SymbolRegular.DataBarVertical24, KarlilikAsync),
         E("Ekler", SymbolRegular.Attach24, () => Secili is { } s ? EklerPenceresi.AcAsync(EkHedef.Sefer, s.Id, s.SeferNo) : Task.CompletedTask),
     ];
+
+    public override bool DetayVar => true;
+    protected override Task DetayAsync(SeferSatir satir)
+    {
+        Gezgin.Ac(new SeferDetayVM(satir.Id));
+        return Task.CompletedTask;
+    }
+
+    // Eylemler listede seçili satıra, detay sayfasından çağrıldığında ise verilen sefere uygulanır.
+    private (int Id, string SeferNo)? _hedef;
+    private (int Id, string SeferNo)? Hedef => _hedef ?? (Secili is { } x ? (x.Id, x.SeferNo) : null);
+
+    /// <summary>Detay sayfasından: verilen sefer için bir liste eylemini çalıştırır (Durum, Kapat, Masraf, Avans, Harcırah, Duraklar).</summary>
+    public async Task SeferIcinAsync(int id, string seferNo, SeferEylemi eylem)
+    {
+        _hedef = (id, seferNo);
+        try
+        {
+            await (eylem switch
+            {
+                SeferEylemi.YolaCikti => DurumAsync(SeferDurum.Yolda),
+                SeferEylemi.TeslimEdildi => DurumAsync(SeferDurum.TeslimEdildi),
+                SeferEylemi.Kapat => KapatAsync(),
+                SeferEylemi.YenidenAc => DurumAsync(SeferDurum.TeslimEdildi, "Sefer yeniden açılsın mı? (Taşeron kaydı ters çevrilir)"),
+                SeferEylemi.Iptal => DurumAsync(SeferDurum.Iptal, "Sefer iptal edilsin mi?"),
+                SeferEylemi.Masraf => MasrafEkleAsync(),
+                SeferEylemi.Avans => AvansAsync(),
+                SeferEylemi.Harcirah => HarcirahAsync(),
+                SeferEylemi.Duraklar => DuraklarAsync(),
+                _ => Task.CompletedTask,
+            });
+        }
+        catch (Exception ex)
+        {
+            await Dialog.HataGoster(ex);
+        }
+        finally
+        {
+            _hedef = null;
+        }
+    }
+
+    /// <summary>Detay sayfasından düzenleme.</summary>
+    public async Task<bool> DuzenleIdAsync(int id)
+    {
+        var s = await servis.GetirAsync(id);
+        if (s is null) return false;
+        var soforler = s.Soforler.OrderByDescending(x => x.Birincil).Select(x => x.SoforId).ToList();
+        var m = new SeferFormModel { S = s, Sofor1Id = soforler.ElementAtOrDefault(0) is var a and > 0 ? a : null, Sofor2Id = soforler.ElementAtOrDefault(1) is var b and > 0 ? b : null, Taseron = s.TaseronCariId is not null };
+        return await FormAcAsync(m, false);
+    }
 
     protected override async Task<IEnumerable<SeferSatir>> YukleAsync() =>
         await servis.ListeAsync(OnayFiltre ? new SeferFiltre(SadeceAcik: true) : new SeferFiltre(Bas, Bit));
@@ -70,11 +123,7 @@ public sealed class SeferListeVM(
 
     protected override async Task DuzenleAsync(SeferSatir satir)
     {
-        var s = await servis.GetirAsync(satir.Id);
-        if (s is null) return;
-        var soforler = s.Soforler.OrderByDescending(x => x.Birincil).Select(x => x.SoforId).ToList();
-        var m = new SeferFormModel { S = s, Sofor1Id = soforler.ElementAtOrDefault(0) is var a and > 0 ? a : null, Sofor2Id = soforler.ElementAtOrDefault(1) is var b and > 0 ? b : null, Taseron = s.TaseronCariId is not null };
-        if (await FormAcAsync(m, false)) await YenileAsync();
+        if (await DuzenleIdAsync(satir.Id)) await YenileAsync();
     }
 
     private async Task<bool> FormAcAsync(SeferFormModel m, bool yeni)
@@ -193,7 +242,7 @@ public sealed class SeferListeVM(
 
     private async Task DurumAsync(SeferDurum durum, string? onayMetni = null)
     {
-        if (Secili is not { } s) return;
+        if (Hedef is not { } s) return;
         if (onayMetni is not null && !await Dialog.Onay(onayMetni)) return;
         if (await Dialog.Calistir(() => servis.DurumDegistirAsync(s.Id, durum)))
         {
@@ -213,7 +262,7 @@ public sealed class SeferListeVM(
     /// <summary>Kapatma: km/teslim eksikse önce hızlıca girdirir.</summary>
     private async Task KapatAsync()
     {
-        if (Secili is not { } satir) return;
+        if (Hedef is not { } satir) return;
         var s = await servis.GetirAsync(satir.Id);
         if (s is null) return;
         var eksik = (s.AracId is not null && (s.CikisKm is null || s.DonusKm is null)) || s.TeslimTarihi is null;
@@ -253,7 +302,7 @@ public sealed class SeferListeVM(
 
     private async Task MasrafEkleAsync()
     {
-        if (Secili is not { } s) return;
+        if (Hedef is not { } s) return;
         var m = new Masraf
         {
             Tarih = DateOnly.FromDateTime(DateTime.Today), Merkez = MasrafMerkezi.Sefer, SeferId = s.Id, OdemeSekli = OdemeSekli.SoforNakit,
@@ -263,14 +312,14 @@ public sealed class SeferListeVM(
 
     private async Task AvansAsync()
     {
-        if (Secili is not { } s) return;
+        if (Hedef is not { } s) return;
         var sofor = await IlkSoforAsync(s.Id);
         await SoforHesapFormlari.AvansAsync(soforHesap, secimler, sofor, s.Id);
     }
 
     private async Task HarcirahAsync()
     {
-        if (Secili is not { } s) return;
+        if (Hedef is not { } s) return;
         var sofor = await IlkSoforAsync(s.Id);
         if (sofor is null) { await Dialog.Bilgi("Seferde şoför yok."); return; }
         var oneri = await soforHesap.SeferdenHarcirahOnerAsync(s.Id, sofor.Value);
@@ -285,7 +334,7 @@ public sealed class SeferListeVM(
 
     private async Task KarlilikAsync()
     {
-        if (Secili is not { } s) return;
+        if (Hedef is not { } s) return;
         var k = await servis.KarlilikAsync(s.Id);
         var satirlar = string.Join("\n", k.Giderler.Select(g => $"   {g.Kalem,-28} {g.TutarTL,14:N2}"));
         await Dialog.Bilgi(
@@ -314,7 +363,7 @@ public sealed class SeferListeVM(
 
     private async Task DuraklarAsync()
     {
-        if (Secili is not { } satir) return;
+        if (Hedef is not { } satir) return;
         var s = await servis.GetirAsync(satir.Id);
         if (s is null) return;
         var lok = await secimler.LokasyonlarAsync();

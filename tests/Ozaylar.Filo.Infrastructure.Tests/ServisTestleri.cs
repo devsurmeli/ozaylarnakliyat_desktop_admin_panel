@@ -124,28 +124,156 @@ public class ServisTestleri(VeritabaniFixture fx)
         await Assert.ThrowsAsync<DomainException>(() => servis.DurumDegistirAsync(c2.Id, CekSenetDurum.TahsilEdildi, Bugun, banka, null, null));
     }
 
+    private KrediServisi Kredi => new(T.Factory, fx.Oturum, saat, new DovizServisi(T.Factory));
+
     [Fact]
-    public async Task Kredi_taksiti_odenince_kasadan_cikar_ve_arac_karliliginda_faiz_gorunur()
+    public async Task Kredi_kullandirimi_kasaya_ve_bankaya_yazilir_taksit_anapara_faiz_ayrilir_ve_raporda_faiz_gorunur()
     {
         var arac = await T.AracAsync();
-        var bankaCari = await T.CariAsync(CariTipi.Finans);
+        var banka = await T.CariAsync(CariTipi.Finans);
         var kasa = await T.KasaAsync(1_000_000);
-        var servis = new FinansmanServisi(T.Factory, fx.Oturum, saat);
-        var f = new AracFinansman { AracId = arac.Id, FinansKurumuCariId = bankaCari.Id, AnaparaTutar = 600_000, AylikFaizOrani = 2.5m, VadeSayisi = 12, BaslangicTarihi = Bugun };
-        var plan = FinansmanServisi.PlanOner(f, new DateOnly(2026, 8, 1));
-        var id = await servis.KaydetAsync(f, plan);
-        var taksitler = await servis.TaksitlerAsync(new DateOnly(2026, 8, 1), new DateOnly(2027, 12, 31), true);
-        var ilk = taksitler.Where(t => t.FinansmanId == id).OrderBy(t => t.TaksitNo).First();
-        Assert.Equal(15_000m, ilk.Faiz);
+        var k = await Kredi.KaydetAsync(new Kredi
+        {
+            KrediNo = $"TK-{TestVerisi.Sira()}", BankaCariId = banka.Id, KullandirimTarihi = Bugun, KullandirimKasaHesapId = kasa, Anapara = 600_000,
+            FaizOrani = 2.5m, BsmvOrani = 5, VadeSayisi = 12, IlkVade = new DateOnly(2026, 8, 10), DosyaMasrafi = 1_000,
+        }, null, [new KrediArac { AracId = arac.Id, PayYuzde = 100 }]);
 
-        await servis.TaksitOdeAsync(ilk.Id, kasa, new DateOnly(2026, 8, 1));
-        Assert.Equal(1_000_000 - ilk.Toplam, await T.KasaBakiyeAsync(kasa));
-        await Assert.ThrowsAsync<DomainException>(() => servis.TaksitOdeAsync(ilk.Id, kasa, new DateOnly(2026, 8, 1)));
+        // Kullandırım: kasaya net tutar girer, banka carisi anapara kadar alacaklı
+        Assert.Equal(1_599_000m, await T.KasaBakiyeAsync(kasa));
+        Assert.Equal(-600_000m, await T.CariBakiyeAsync(banka.Id));
 
-        var rapor = new RaporServisi(T.Factory, fx.Oturum, saat);
-        var satir = (await rapor.AracKarlilikAsync(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31))).Single(r => r.AracId == arac.Id);
-        Assert.Equal(15_000m, satir.FinansmanFaizi);
-        Assert.Equal(-15_000m, satir.Kar);
+        var d = await Kredi.DetayAsync(k.Id);
+        Assert.Equal(12, d.Plan.Count);
+        var ilk = d.Plan[0];
+        Assert.Equal((15_000m, 750m), (ilk.Faiz, ilk.Bsmv));
+
+        await Kredi.TaksitOdeAsync(ilk.Id, ilk.Vade, kasa, null, null);
+        Assert.Equal(1_599_000m - ilk.Toplam, await T.KasaBakiyeAsync(kasa));
+        // Banka carisinde net etki yalnızca anapara azalışı
+        Assert.Equal(-600_000m + ilk.Anapara, await T.CariBakiyeAsync(banka.Id));
+        d = await Kredi.DetayAsync(k.Id);
+        Assert.Equal(600_000m - ilk.Anapara, d.Ozet.KalanAnapara);
+        Assert.Equal(15_750m, d.Ozet.OdenenFaiz);
+        Assert.Equal(1, d.Ozet.OdenenTaksit);
+        await Assert.ThrowsAsync<DomainException>(() => Kredi.TaksitOdeAsync(ilk.Id, ilk.Vade, kasa, null, null));
+
+        var rapor = new RaporServisi(T.Factory, fx.Oturum, saat, Kredi);
+        var agustos = (await rapor.AracKarlilikAsync(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31))).Single(r => r.AracId == arac.Id);
+        Assert.Equal(15_750m, agustos.FinansmanFaizi);
+        var temmuz = (await rapor.AracKarlilikAsync(new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 31))).Single(r => r.AracId == arac.Id);
+        Assert.Equal(1_000m, temmuz.FinansmanFaizi); // dosya masrafı kullandırım ayında
+
+        // Son ödeme iptal edilebilir: kasa ve banka eski haline döner
+        await Kredi.OdemeIptalAsync(d.Odemeler.Single().Id, "test");
+        Assert.Equal(1_599_000m, await T.KasaBakiyeAsync(kasa));
+        Assert.Equal(-600_000m, await T.CariBakiyeAsync(banka.Id));
+        Assert.Equal(600_000m, (await Kredi.DetayAsync(k.Id)).Ozet.KalanAnapara);
+    }
+
+    [Fact]
+    public async Task Dovizli_kredi_tl_hesaptan_odeme_gunu_kuruyla_odenir()
+    {
+        var banka = await T.CariAsync(CariTipi.Finans);
+        var kasa = await T.KasaAsync(2_000_000);
+        var k = await Kredi.KaydetAsync(new Kredi
+        {
+            KrediNo = $"EUR-{TestVerisi.Sira()}", Tur = KrediTuru.DovizeEndeksli, BankaCariId = banka.Id, ParaBirimi = ParaBirimi.EUR, KullandirimTarihi = Bugun,
+            KullandirimKur = 40m, Anapara = 10_000, FaizOrani = 12m, FaizTipi = FaizTipi.Yillik, BsmvOrani = 0, VadeSayisi = 10, IlkVade = Bugun.AddMonths(1),
+        }, null, []);
+        Assert.Equal(-400_000m, await T.CariBakiyeAsync(banka.Id));
+        var ilk = (await Kredi.DetayAsync(k.Id)).Plan[0];
+        Assert.Equal(100m, ilk.Faiz); // 10.000 × %1 aylık
+
+        await Kredi.TaksitOdeAsync(ilk.Id, ilk.Vade, kasa, null, null, kur: 42m);
+        var o = (await Kredi.DetayAsync(k.Id)).Odemeler.Single();
+        Assert.Equal(42m, o.Kur);
+        Assert.Equal(Math.Round(ilk.Toplam * 42m, 2), o.KasaTutar);
+        Assert.Equal(2_000_000m - o.KasaTutar, await T.KasaBakiyeAsync(kasa));
+        await Assert.ThrowsAsync<DomainException>(async () =>
+        {
+            var usdKasa = await T.KasaAsync(100, ParaBirimi.USD);
+            var ikinci = (await Kredi.DetayAsync(k.Id)).Plan[1];
+            await Kredi.TaksitOdeAsync(ikinci.Id, ikinci.Vade, usdKasa, null, null, 42m);
+        });
+    }
+
+    [Fact]
+    public async Task Ara_odeme_yeni_plan_versiyonu_olusturur_erken_kapama_krediyi_kapatir()
+    {
+        var banka = await T.CariAsync(CariTipi.Finans);
+        var kasa = await T.KasaAsync(1_000_000);
+        var k = await Kredi.KaydetAsync(new Kredi
+        {
+            KrediNo = $"AO-{TestVerisi.Sira()}", BankaCariId = banka.Id, KullandirimTarihi = Bugun, Anapara = 120_000, FaizOrani = 2m, BsmvOrani = 0,
+            VadeSayisi = 12, IlkVade = Bugun.AddMonths(1),
+        }, null, []);
+        var d = await Kredi.DetayAsync(k.Id);
+        foreach (var t in d.Plan.Take(2)) await Kredi.TaksitOdeAsync(t.Id, t.Vade, kasa, null, null);
+        var kalanOnce = (await Kredi.DetayAsync(k.Id)).Ozet.KalanAnapara;
+
+        await Kredi.AraOdemeAsync(k.Id, d.Plan[1].Vade.AddDays(5), kasa, 30_000, YenidenPlanModu.VadeyiKisalt, 0);
+        d = await Kredi.DetayAsync(k.Id);
+        Assert.Equal((byte)2, d.Kredi.AktifVersiyon);
+        Assert.Equal(kalanOnce - 30_000m, d.Ozet.KalanAnapara);
+        var acik = d.Plan.Where(p => p.Durum == TaksitDurum.Bekliyor).ToList();
+        Assert.True(acik.Count < 10);
+        Assert.Equal(d.Ozet.KalanAnapara, acik.Sum(p => p.Anapara));
+        await Assert.ThrowsAsync<DomainException>(() => Kredi.KaydetAsync(d.Kredi.Tap(x => x.Anapara = 1), null, []));
+
+        var on = await Kredi.ErkenKapamaOnizleAsync(k.Id, acik[0].Vade, 0);
+        Assert.Equal(d.Ozet.KalanAnapara, on.KalanAnapara);
+        await Kredi.ErkenKapatAsync(k.Id, acik[0].Vade, kasa, 0);
+        d = await Kredi.DetayAsync(k.Id);
+        Assert.Equal(KrediDurum.Kapandi, d.Kredi.Durum);
+        Assert.Equal(0m, d.Ozet.KalanAnapara);
+        Assert.Equal(0m, await T.CariBakiyeAsync(banka.Id));
+        Assert.DoesNotContain(d.Plan, p => p.Durum == TaksitDurum.Bekliyor);
+    }
+
+    [Fact]
+    public async Task Sofor_para_ver_al_musteri_tahsilati_bakiye_ve_arac_bazli_defter()
+    {
+        var arac = await T.AracAsync();
+        var sofor = await T.SoforAsync();
+        var musteri = await T.CariAsync();
+        var kasa = await T.KasaAsync(100_000);
+        var sh = T.SoforHesap;
+        await sh.AracAtaAsync(sofor.Id, arac.Id, Bugun.AddDays(-5));
+
+        await sh.AvansVerAsync(new Avans { SoforId = sofor.Id, Tur = AvansTuru.Harclik, Tarih = Bugun, Tutar = 5_000, KasaHesapId = kasa });
+        await sh.ParaAlAsync(sofor.Id, SoforHesapServisi.ParaAlTuru.Iade, Bugun, 1_000, kasa, null, null, null, null);
+        await sh.ParaAlAsync(sofor.Id, SoforHesapServisi.ParaAlTuru.MusteriTahsilati, Bugun, 10_000, null, musteri.Id, null, null, "nakit navlun");
+
+        Assert.Equal(96_000m, await T.KasaBakiyeAsync(kasa));
+        Assert.Equal(14_000m, await T.CariBakiyeAsync(sofor.CariId)); // şoförün elinde 4.000 avans + 10.000 tahsilat
+        Assert.Equal(-10_000m, await T.CariBakiyeAsync(musteri.Id));
+
+        var defter = await sh.DefterAsync(Bugun, Bugun, sofor.Id);
+        Assert.Equal(3, defter.Count); // avans, iade, müşteri tahsilatı
+        Assert.All(defter, x => Assert.Equal(arac.Plaka, x.Plaka));
+        Assert.Equal(14_000m, defter[^1].Bakiye);
+        Assert.Equal(3, (await sh.DefterAsync(Bugun, Bugun, null, arac.Id)).Count);
+        Assert.Equal(14_000m, (await sh.OzetAsync(sofor.Id)).Bakiye);
+    }
+
+    [Fact]
+    public async Task Hakedis_maas_onerir_tahakkuk_sofor_carisine_alacak_yazar_tekrar_onermez()
+    {
+        var sofor = await T.SoforAsync();
+        await using (var db = fx.Db())
+        {
+            var s = await db.Soforler.SingleAsync(x => x.Id == sofor.Id);
+            s.MaasTutari = 30_000;
+            await db.SaveChangesAsync();
+        }
+        var sh = T.SoforHesap;
+        var oneri = (await sh.HakedisOnerAsync(202607)).Where(o => o.SoforId == sofor.Id).ToList();
+        Assert.Equal(30_000m, Assert.Single(oneri).Tutar);
+        await sh.TahakkukYazAsync(202607, oneri.Select(o => new PersonelTahakkuk { SoforId = o.SoforId, Tur = o.Tur, Tutar = o.Tutar }).ToList());
+        await sh.TahakkukYazAsync(202607, [new PersonelTahakkuk { SoforId = sofor.Id, Tur = TahakkukTuru.Kesinti, Tutar = 500, Aciklama = "hasar" }]);
+        Assert.Equal(-29_500m, await T.CariBakiyeAsync(sofor.CariId)); // şirket şoföre borçlu
+        Assert.DoesNotContain(await sh.HakedisOnerAsync(202607), o => o.SoforId == sofor.Id);
+        Assert.Equal(29_500m, (await sh.TahakkuklarAsync(202607, sofor.Id)).Sum(t => t.Net));
     }
 
     [Fact]
@@ -191,14 +319,66 @@ public class ServisTestleri(VeritabaniFixture fx)
     }
 
     [Fact]
+    public async Task Tum_belgeler_pdf_olarak_uretilir()
+    {
+        var klasor = Path.Combine(Path.GetTempPath(), "OzaylarBelgeTest");
+        Directory.CreateDirectory(klasor);
+        var sira = 0;
+        void Pdf(byte[] x)
+        {
+            Assert.True(x.Length > 1000);
+            Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(x, 0, 4));
+            File.WriteAllBytes(Path.Combine(klasor, $"belge{++sira}.pdf"), x); // görsel kontrol için
+        }
+        var b = new BelgeUretici(T.Factory);
+        var kasa = await T.KasaAsync(500_000);
+        var arac = await T.AracAsync();
+        var sofor = await T.SoforAsync();
+        var musteri = await T.CariAsync();
+        var k = await Kredi.KaydetAsync(new Kredi
+        {
+            KrediNo = $"PDF-{TestVerisi.Sira()}", BankaCariId = (await T.CariAsync(CariTipi.Finans)).Id, KullandirimTarihi = Bugun, Anapara = 100_000,
+            FaizOrani = 2.5m, VadeSayisi = 6, IlkVade = Bugun.AddMonths(1),
+        }, null, [new KrediArac { AracId = arac.Id, PayYuzde = 100 }]);
+        Pdf(b.KrediOdemePlani(await Kredi.DetayAsync(k.Id)));
+        Pdf(b.Makbuz(new MakbuzVeri(MakbuzTuru.Avans, "15", Bugun, "Ali Test", 1_250.50m, ParaBirimi.TRY, "Merkez Kasa", "Sefer avansı", "34 T 1", "S2026-1")));
+        Pdf(b.Makbuz(new MakbuzVeri(MakbuzTuru.Tahsilat, "16", Bugun, "Çağlar Gıda", 3_000m, ParaBirimi.EUR, "Banka", null)));
+
+        var sh = T.SoforHesap;
+        await sh.AvansVerAsync(new Avans { SoforId = sofor.Id, Tarih = Bugun, Tutar = 1_000, KasaHesapId = kasa });
+        Pdf(b.SoforEkstresi("Ali Test", Bugun, Bugun, await sh.DefterAsync(Bugun, Bugun, sofor.Id)));
+        Pdf(b.HakedisPusulasi("Ali Test", 202607, [new TahakkukSatir(1, 202607, "Ali Test", TahakkukTuru.Maas, 30_000, null, null, "Temmuz maaşı", false),
+            new TahakkukSatir(2, 202607, "Ali Test", TahakkukTuru.Kesinti, 500, null, null, "Hasar", false)], 1_000));
+        Pdf(b.ZimmetTutanagi("Ali Test", [new Zimmet { Ad = "Opet taşıt kartı", SeriNo = "7006", Tur = ZimmetTuru.YakitKarti, VerilisTarihi = Bugun }]));
+
+        var f = T.Factory;
+        var rapor = new RaporServisi(f, fx.Oturum, saat, Kredi);
+        var detay = new DetayServisi(f, fx.Oturum, saat, rapor, T.Gider, Kredi, T.Finans, T.Sefer);
+        Pdf(b.CariMutabakat(await detay.CariOzetAsync(musteri.Id), Bugun));
+        var sefer = await T.SeferAsync(arac, sofor, musteri);
+        Pdf(b.SeferFoyu(await detay.SeferOzetAsync(sefer.Id), [], await sh.AvanslarAsync(Bugun, Bugun, sofor.Id)));
+    }
+
+    [Fact]
     public async Task Panel_ozeti_yetkiye_gore_doldurulur()
     {
         var f = T.Factory;
         var finans = new FinansServisi(f, fx.Oturum, saat);
-        var panel = new PanelServisi(f, fx.Oturum, saat, finans,
-            new EvrakServisi(f, fx.Oturum, [], saat), new BakimServisi(f, fx.Oturum, saat), new RaporServisi(f, fx.Oturum, saat), new AyarServisi(f, fx.Oturum));
+        var panel = new PanelServisi(f, fx.Oturum, saat, finans, new EvrakServisi(f, fx.Oturum, [], saat), new BakimServisi(f, fx.Oturum, saat),
+            new RaporServisi(f, fx.Oturum, saat, Kredi), new AyarServisi(f, fx.Oturum), Kredi, T.SoforHesap);
         var o = await panel.OzetAsync();
         Assert.NotNull(o.Kasalar);
         Assert.NotNull(o.AcikAlacak);
+        Assert.NotNull(o.Kredi);
+        Assert.Equal(12, o.Trend!.Count);
+    }
+}
+
+internal static class TestUzanti
+{
+    public static T Tap<T>(this T x, Action<T> a)
+    {
+        a(x);
+        return x;
     }
 }

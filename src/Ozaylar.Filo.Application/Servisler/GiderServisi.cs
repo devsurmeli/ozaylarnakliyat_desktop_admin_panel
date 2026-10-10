@@ -101,7 +101,7 @@ public sealed class GiderServisi(IFiloDbContextFactory factory, IKullaniciOturum
         await db.KaydetAsync(ct);
         var tur = await db.MasrafTurleri.Where(t => t.Id == m.MasrafTuruId).Select(t => t.Ad).SingleAsync(ct);
         await OdemeIsleAsync(db, KaynakTip.Masraf, m.Id, m.Tarih, m.Tutar, m.ParaBirimi, m.Kur, m.OdemeSekli, m.KasaHesapId, m.CariId, m.SoforId,
-            $"{tur}{(m.Aciklama is null ? "" : " - " + m.Aciklama)}", ct);
+            $"{tur}{(m.Aciklama is null ? "" : " - " + m.Aciklama)}", m.AracId, m.SeferId, ct);
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);
         return m;
@@ -174,20 +174,20 @@ public sealed class GiderServisi(IFiloDbContextFactory factory, IKullaniciOturum
 
     /// <summary>Ödeme şekline göre defter etkisi.</summary>
     private static async Task OdemeIsleAsync(IFiloDbContext db, KaynakTip tip, int id, DateOnly tarih, decimal tutar, ParaBirimi pb, decimal kur,
-        OdemeSekli odeme, byte? kasaId, int? cariId, short? soforId, string aciklama, CancellationToken ct)
+        OdemeSekli odeme, byte? kasaId, int? cariId, short? soforId, string aciklama, short? aracId, int? seferId, CancellationToken ct)
     {
         switch (odeme)
         {
             case OdemeSekli.SoforNakit:
                 var soforCari = await db.Soforler.Where(s => s.Id == soforId).Select(s => s.CariId).SingleAsync(ct);
-                Defter.Cari(db, soforCari, tarih, 0, tutar, tip, id, aciklama, pb, kur);
+                Defter.Cari(db, soforCari, tarih, 0, tutar, tip, id, aciklama, pb, kur, aracId: aracId, seferId: seferId);
                 break;
             case OdemeSekli.Kasa:
                 Defter.Kasa(db, kasaId!.Value, tarih, 0, tutar, tip, id, aciklama, cariId, kur);
                 break;
             case OdemeSekli.Cari:
             case OdemeSekli.Kart when cariId is not null:
-                Defter.Cari(db, cariId!.Value, tarih, 0, tutar, tip, id, aciklama, pb, kur);
+                Defter.Cari(db, cariId!.Value, tarih, 0, tutar, tip, id, aciklama, pb, kur, aracId: aracId, seferId: seferId);
                 break;
         }
     }
@@ -259,8 +259,9 @@ public sealed class GiderServisi(IFiloDbContextFactory factory, IKullaniciOturum
         var arac = await db.Araclar.SingleAsync(a => a.Id == y.AracId, ct);
         if (y.Km > arac.GuncelKm) arac.GuncelKm = y.Km;
         await db.KaydetAsync(ct);
+        AracKm.Kaydet(db, y.AracId, y.AlimZamani, y.Km, KmKaynak.Yakit, y.Id);
         await OdemeIsleAsync(db, KaynakTip.Yakit, y.Id, y.Tarih, y.Tutar, y.ParaBirimi, y.Kur, y.OdemeSekli, y.KasaHesapId, y.IstasyonCariId, y.SoforId,
-            $"Yakıt {arac.Plaka} {y.Litre:N2} L {y.IstasyonAdi}", ct);
+            $"Yakıt {arac.Plaka} {y.Litre:N2} L {y.IstasyonAdi}", y.AracId, y.SeferId, ct);
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);
         return y;
@@ -402,7 +403,8 @@ public sealed class GiderServisi(IFiloDbContextFactory factory, IKullaniciOturum
         if (c.RucuEdilsin && !await RucuVarAsync(db, c.Id, ct))
         {
             var soforCari = await db.Soforler.Where(s => s.Id == c.SoforId).Select(s => s.CariId).SingleAsync(ct);
-            Defter.Cari(db, soforCari, c.Tarih, c.IndirimliTutar ?? c.Tutar, 0, KaynakTip.Ceza, c.Id, $"Ceza rücu: {c.CezaTuru} {c.TutanakNo}");
+            Defter.Cari(db, soforCari, c.Tarih, c.IndirimliTutar ?? c.Tutar, 0, KaynakTip.Ceza, c.Id, $"Ceza rücu: {c.CezaTuru} {c.TutanakNo}",
+                aracId: c.AracId, seferId: c.SeferId);
         }
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);

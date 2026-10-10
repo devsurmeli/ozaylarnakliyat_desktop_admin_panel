@@ -42,6 +42,9 @@ public class CariHareket : DefterKaydi
     public decimal Kur { get; set; } = 1m;
     public decimal? DovizBorc { get; set; }
     public decimal? DovizAlacak { get; set; }
+    /// <summary>Hareketin ilgili olduğu araç / sefer (şoför defteri ve araç ekstresi için).</summary>
+    public short? AracId { get; set; }
+    public int? SeferId { get; set; }
 
     public Cari? Cari { get; set; }
 }

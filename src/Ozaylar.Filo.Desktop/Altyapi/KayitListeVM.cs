@@ -42,6 +42,16 @@ public abstract class KayitListeVM<TSatir, T>(IDisaAktarici disa, IKayitServisi<
         if (await FormAcAsync(m, false)) await YenileAsync();
     }
 
+    /// <summary>Detay sayfasından kayıt kartını (düzenleme formu) açar; kaydedilirse liste de yenilenir.</summary>
+    public async Task<bool> KartAcAsync(object id)
+    {
+        var m = await Servis.GetirAsync(id);
+        if (m is null) return false;
+        var ok = await FormAcAsync(m, false);
+        if (ok) await YenileAsync();
+        return ok;
+    }
+
     protected virtual async Task<bool> FormAcAsync(T m, bool yeni)
     {
         var alanlar = await AlanlarAsync(m, yeni);

@@ -94,6 +94,7 @@ public sealed class BakimServisi(IFiloDbContextFactory factory, IKullaniciOturum
         {
             var arac = await db.Araclar.SingleAsync(a => a.Id == b.AracId, ct);
             if (b.Km > arac.GuncelKm) arac.GuncelKm = b.Km.Value;
+            AracKm.Kaydet(db, b.AracId.Value, b.Tarih.ToDateTime(new TimeOnly(12, 0)), b.Km.Value, KmKaynak.Bakim, b.Id);
         }
         await db.KaydetAsync(ct);
         await tx.CommitAsync(ct);
@@ -205,117 +206,6 @@ public sealed class LastikServisi(IFiloDbContextFactory factory, IKullaniciOturu
         l.Durum = yeniDurum;
         if (yeniDurum == LastikDurum.Kaplamada) l.KaplamaSayisi++;
         if (yeniDurum == LastikDurum.Hurda) l.HurdaTarihi = tarih;
-        await db.KaydetAsync(ct);
-    }
-}
-
-public sealed record FinansmanSatir(short Id, string? Plaka, FinansmanTipi Tip, string Kurum, string? SozlesmeNo, decimal Anapara, ParaBirimi ParaBirimi,
-    short VadeSayisi, int OdenenTaksit, decimal KalanBorc, DateOnly? SonrakiVade, bool Aktif)
-{
-    public string TipAd => Tip.Ad();
-}
-
-public sealed record TaksitSatir(int Id, short FinansmanId, string? Plaka, string Kurum, short TaksitNo, DateOnly Vade, decimal Anapara, decimal Faiz, decimal Toplam,
-    ParaBirimi ParaBirimi, DateOnly? OdemeTarihi)
-{
-    public bool Odendi => OdemeTarihi is not null;
-}
-
-public sealed class FinansmanServisi(IFiloDbContextFactory factory, IKullaniciOturumu oturum, ISaat saat)
-{
-    public async Task<List<FinansmanSatir>> ListeAsync(CancellationToken ct = default)
-    {
-        oturum.YetkiGerekli(Izinler.FinansmanGor);
-        await using var db = factory.Olustur();
-        return await db.AracFinansmanlari.AsNoTracking().OrderBy(f => f.BaslangicTarihi)
-            .Select(f => new FinansmanSatir(f.Id, f.Arac != null ? f.Arac.Plaka : f.Dorse != null ? f.Dorse.Plaka : null, f.Tip, f.FinansKurumu!.Unvan,
-                f.SozlesmeNo, f.AnaparaTutar, f.ParaBirimi, f.VadeSayisi,
-                f.Taksitler.Count(t => t.OdemeTarihi != null),
-                f.Taksitler.Where(t => t.OdemeTarihi == null).Sum(t => (decimal?)t.Toplam) ?? 0,
-                f.Taksitler.Where(t => t.OdemeTarihi == null).Min(t => (DateOnly?)t.VadeTarihi), f.Aktif))
-            .ToListAsync(ct);
-    }
-
-    public async Task<AracFinansman?> GetirAsync(short id, CancellationToken ct = default)
-    {
-        await using var db = factory.Olustur();
-        return await db.AracFinansmanlari.AsNoTracking().Include(f => f.Taksitler.OrderBy(t => t.TaksitNo)).SingleOrDefaultAsync(f => f.Id == id, ct);
-    }
-
-    public static List<FinansmanTaksit> PlanOner(AracFinansman f, DateOnly ilkVade) =>
-        TaksitPlani.Olustur(f.AnaparaTutar, f.AylikFaizOrani, f.VadeSayisi, ilkVade)
-            .Select(t => new FinansmanTaksit { TaksitNo = t.TaksitNo, VadeTarihi = t.Vade, Anapara = t.Anapara, Faiz = t.Faiz, Toplam = t.Toplam })
-            .ToList();
-
-    /// <summary>Sözleşmeyi ve taksit planını kaydeder. Ödenmiş taksitler korunur, ödenmemişler verilen planla değiştirilir.</summary>
-    public async Task<short> KaydetAsync(AracFinansman f, IReadOnlyList<FinansmanTaksit> plan, CancellationToken ct = default)
-    {
-        oturum.YetkiGerekli(Izinler.FinansmanYaz);
-        if (f.FinansKurumuCariId == 0) throw new DomainException("Finans kurumu (banka/leasing şirketi) seçilmelidir.");
-        if (f.AnaparaTutar <= 0 || f.VadeSayisi <= 0) throw new DomainException("Anapara ve vade sayısı girilmelidir.");
-        if (plan.Count == 0) throw new DomainException("Taksit planı boş olamaz.");
-        if (plan.Select(t => t.TaksitNo).Distinct().Count() != plan.Count) throw new DomainException("Taksit numaraları tekil olmalıdır.");
-        foreach (var t in plan) t.Toplam = t.Anapara + t.Faiz;
-        await using var db = factory.Olustur();
-        AracFinansman hedef;
-        if (f.Id == 0)
-        {
-            f.Taksitler = plan.Select(t => new FinansmanTaksit { TaksitNo = t.TaksitNo, VadeTarihi = t.VadeTarihi, Anapara = t.Anapara, Faiz = t.Faiz, Toplam = t.Toplam }).ToList();
-            db.AracFinansmanlari.Add(f);
-            hedef = f;
-        }
-        else
-        {
-            hedef = await db.BirlestirAsync(f, ct);
-            var mevcut = await db.FinansmanTaksitleri.Where(t => t.AracFinansmanId == f.Id).ToListAsync(ct);
-            var odenmis = mevcut.Where(t => t.OdemeTarihi != null).Select(t => t.TaksitNo).ToHashSet();
-            db.FinansmanTaksitleri.RemoveRange(mevcut.Where(t => t.OdemeTarihi == null));
-            await db.KaydetAsync(ct);
-            foreach (var t in plan.Where(t => !odenmis.Contains(t.TaksitNo)))
-                db.FinansmanTaksitleri.Add(new FinansmanTaksit { AracFinansmanId = f.Id, TaksitNo = t.TaksitNo, VadeTarihi = t.VadeTarihi, Anapara = t.Anapara, Faiz = t.Faiz, Toplam = t.Toplam });
-        }
-        await db.KaydetAsync(ct);
-        return hedef.Id;
-    }
-
-    public async Task<List<TaksitSatir>> TaksitlerAsync(DateOnly bas, DateOnly bit, bool sadeceOdenmemis, CancellationToken ct = default)
-    {
-        oturum.YetkiGerekli(Izinler.FinansmanGor);
-        await using var db = factory.Olustur();
-        return await db.FinansmanTaksitleri.AsNoTracking()
-            .Where(t => t.VadeTarihi >= bas && t.VadeTarihi <= bit && (!sadeceOdenmemis || t.OdemeTarihi == null) && t.AracFinansman!.Aktif)
-            .OrderBy(t => t.VadeTarihi)
-            .Select(t => new TaksitSatir(t.Id, t.AracFinansmanId,
-                t.AracFinansman!.Arac != null ? t.AracFinansman.Arac.Plaka : t.AracFinansman.Dorse != null ? t.AracFinansman.Dorse.Plaka : null,
-                t.AracFinansman.FinansKurumu!.Unvan, t.TaksitNo, t.VadeTarihi, t.Anapara, t.Faiz, t.Toplam, t.AracFinansman.ParaBirimi, t.OdemeTarihi))
-            .ToListAsync(ct);
-    }
-
-    public async Task TaksitOdeAsync(int taksitId, byte kasaHesapId, DateOnly tarih, CancellationToken ct = default)
-    {
-        oturum.YetkiGerekli(Izinler.FinansmanYaz);
-        await using var db = factory.Olustur();
-        var t = await db.FinansmanTaksitleri.Include(x => x.AracFinansman).SingleAsync(x => x.Id == taksitId, ct);
-        if (t.OdemeTarihi is not null) throw new DomainException("Taksit zaten ödenmiş.");
-        var kasaPb = await db.KasaHesaplari.Where(k => k.Id == kasaHesapId).Select(k => k.ParaBirimi).SingleAsync(ct);
-        if (kasaPb != t.AracFinansman!.ParaBirimi) throw new DomainException("Kasa para birimi kredi para birimiyle aynı olmalıdır.");
-        await Defter.KasaCikisKontrolAsync(db, kasaHesapId, t.Toplam, ct);
-        t.OdemeTarihi = tarih;
-        t.OdemeKasaHesapId = kasaHesapId;
-        Defter.Kasa(db, kasaHesapId, tarih, 0, t.Toplam, KaynakTip.FinansmanTaksit, t.Id,
-            $"{t.AracFinansman.Tip.Ad()} taksiti {t.TaksitNo}/{t.AracFinansman.VadeSayisi} {t.AracFinansman.SozlesmeNo}", t.AracFinansman.FinansKurumuCariId);
-        await db.KaydetAsync(ct);
-    }
-
-    public async Task TaksitOdemeIptalAsync(int taksitId, CancellationToken ct = default)
-    {
-        oturum.YetkiGerekli(Izinler.FinansIptal);
-        await using var db = factory.Olustur();
-        var t = await db.FinansmanTaksitleri.SingleAsync(x => x.Id == taksitId, ct);
-        if (t.OdemeTarihi is null) return;
-        t.OdemeTarihi = null;
-        t.OdemeKasaHesapId = null;
-        await Defter.TersKayitAsync(db, KaynakTip.FinansmanTaksit, t.Id, saat.Bugun, "taksit ödemesi iptal", ct);
         await db.KaydetAsync(ct);
     }
 }

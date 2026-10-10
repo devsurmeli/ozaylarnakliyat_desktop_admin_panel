@@ -55,8 +55,15 @@ public interface IFiloDbContext : IDisposable, IAsyncDisposable
     DbSet<BakimKalem> BakimKalemleri { get; }
     DbSet<Lastik> Lastikler { get; }
     DbSet<LastikHareket> LastikHareketleri { get; }
-    DbSet<AracFinansman> AracFinansmanlari { get; }
-    DbSet<FinansmanTaksit> FinansmanTaksitleri { get; }
+    DbSet<Kredi> Krediler { get; }
+    DbSet<KrediTaksit> KrediTaksitleri { get; }
+    DbSet<KrediOdeme> KrediOdemeleri { get; }
+    DbSet<KrediArac> KrediAraclari { get; }
+    DbSet<BankaLimit> BankaLimitleri { get; }
+    DbSet<SoforAracAtama> SoforAracAtamalari { get; }
+    DbSet<Zimmet> Zimmetler { get; }
+    DbSet<PersonelTahakkuk> PersonelTahakkuklari { get; }
+    DbSet<AracKmKayit> AracKmKayitlari { get; }
     DbSet<Evrak> Evraklar { get; }
     DbSet<Ek> Ekler { get; }
 

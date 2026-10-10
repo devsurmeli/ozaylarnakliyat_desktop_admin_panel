@@ -16,21 +16,164 @@ namespace Ozaylar.Filo.Desktop.ViewModels;
 
 public static class SoforHesapFormlari
 {
-    public static async Task<bool> AvansAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, int? seferId = null)
+    /// <summary>Şoföre para ver: sefer avansı, harçlık, yol parası veya maaş/hakediş ödemesi; kasadan nakit veya bankadan EFT.</summary>
+    public static async Task<bool> AvansAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, int? seferId = null, AvansTuru tur = AvansTuru.Avans)
     {
-        var a = new Avans { SoforId = soforId ?? 0, SeferId = seferId, Tarih = DateOnly.FromDateTime(DateTime.Today) };
+        var a = new Avans { SoforId = soforId ?? 0, SeferId = seferId, Tarih = DateOnly.FromDateTime(DateTime.Today), Tur = tur };
         var alanlar = new List<FormAlani>
         {
             new() { Etiket = "Şoför", Yol = nameof(Avans.SoforId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.SoforlerAsync() },
-            new() { Etiket = "Sefer", Yol = nameof(Avans.SeferId), Tip = AlanTipi.Secim, Secenekler = await s.SeferlerAsync() },
+            FormAlani.EnumSecim<AvansTuru>("Ne için", nameof(Avans.Tur)),
+            new() { Etiket = "Sefer", Yol = nameof(Avans.SeferId), Tip = AlanTipi.Secim, Secenekler = await s.SeferlerAsync(), Gorunur = _ => a.Tur != AvansTuru.MaasOdemesi },
+            new() { Etiket = "Araç (boş = otomatik)", Yol = nameof(Avans.AracId), Tip = AlanTipi.Secim, Secenekler = await s.AraclarAsync(),
+                    Ipucu = "Boşsa seferin aracı veya şoförün o tarihteki aracı yazılır" },
             new() { Etiket = "Tarih", Yol = nameof(Avans.Tarih), Tip = AlanTipi.Tarih, Zorunlu = true },
-            new() { Etiket = "Kasa / banka", Yol = nameof(Avans.KasaHesapId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.KasalarAsync() },
+            new() { Etiket = "Kasa (nakit) / banka (EFT)", Yol = nameof(Avans.KasaHesapId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.KasalarAsync() },
             new() { Etiket = "Tutar", Yol = nameof(Avans.Tutar), Tip = AlanTipi.Para, Zorunlu = true, Ipucu = "Kasanın para biriminde (EUR kasadan verilen avans EUR'dur)" },
             new() { Etiket = "Kur (dövizli kasa)", Yol = nameof(Avans.Kur), Tip = AlanTipi.Ondalik },
             new() { Etiket = "Açıklama", Yol = nameof(Avans.Aciklama), MaksUzunluk = 200 },
         };
-        var ok = FormPenceresi.Ac("Şoföre Avans", a, alanlar, _ => servis.AvansVerAsync(a));
-        if (ok) AnaPencere.Basarili($"{a.Tutar:N2} avans verildi.");
+        var ok = FormPenceresi.Ac("Şoföre Para Ver", a, alanlar, _ => servis.AvansVerAsync(a));
+        if (ok) AnaPencere.Basarili($"{a.Tutar:N2} verildi ({a.Tur.Ad()}).");
+        return ok;
+    }
+
+    private sealed class ParaAlModel
+    {
+        public short? SoforId { get; set; }
+        public SoforHesapServisi.ParaAlTuru Tur { get; set; } = SoforHesapServisi.ParaAlTuru.Iade;
+        public DateOnly Tarih { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public decimal Tutar { get; set; }
+        public ParaBirimi PB { get; set; } = ParaBirimi.TRY;
+        public decimal Kur { get; set; } = 1;
+        public byte? KasaId { get; set; }
+        public int? MusteriId { get; set; }
+        public int? SeferId { get; set; }
+        public short? AracId { get; set; }
+        public string? Aciklama { get; set; }
+    }
+
+    /// <summary>Şoförden para al: elindeki avansın iadesi veya müşteriden tahsil ettiği navlun.</summary>
+    public static async Task<bool> ParaAlAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, int? seferId = null)
+    {
+        var m = new ParaAlModel { SoforId = soforId, SeferId = seferId };
+        var alanlar = new List<FormAlani>
+        {
+            new() { Etiket = "Şoför", Yol = nameof(ParaAlModel.SoforId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.SoforlerAsync() },
+            new() { Etiket = "İşlem", Yol = nameof(ParaAlModel.Tur), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = new[]
+            {
+                new SecimOgesi<SoforHesapServisi.ParaAlTuru>(SoforHesapServisi.ParaAlTuru.Iade, "Şoför para iade etti"),
+                new SecimOgesi<SoforHesapServisi.ParaAlTuru>(SoforHesapServisi.ParaAlTuru.MusteriTahsilati, "Şoför müşteriden tahsilat yaptı"),
+            } },
+            new() { Etiket = "Müşteri", Yol = nameof(ParaAlModel.MusteriId), Tip = AlanTipi.Secim, Secenekler = await s.CarilerAsync(CariTipi.Musteri),
+                    Gorunur = _ => m.Tur == SoforHesapServisi.ParaAlTuru.MusteriTahsilati },
+            new() { Etiket = "Tarih", Yol = nameof(ParaAlModel.Tarih), Tip = AlanTipi.Tarih, Zorunlu = true },
+            new() { Etiket = "Tutar", Yol = nameof(ParaAlModel.Tutar), Tip = AlanTipi.Para, Zorunlu = true },
+            FormAlani.EnumSecim<ParaBirimi>("Para birimi", nameof(ParaAlModel.PB)),
+            new() { Etiket = "Kur", Yol = nameof(ParaAlModel.Kur), Tip = AlanTipi.Ondalik, Gorunur = _ => m.PB != ParaBirimi.TRY },
+            new() { Etiket = "Teslim alınan kasa / banka", Yol = nameof(ParaAlModel.KasaId), Tip = AlanTipi.Secim, Secenekler = await s.KasalarAsync(),
+                    Ipucu = "Müşteri tahsilatında boş bırakılırsa para şoförde kalır (şoför borçlanır)" },
+            new() { Etiket = "Sefer", Yol = nameof(ParaAlModel.SeferId), Tip = AlanTipi.Secim, Secenekler = await s.SeferlerAsync() },
+            new() { Etiket = "Araç (boş = otomatik)", Yol = nameof(ParaAlModel.AracId), Tip = AlanTipi.Secim, Secenekler = await s.AraclarAsync() },
+            new() { Etiket = "Açıklama", Yol = nameof(ParaAlModel.Aciklama), MaksUzunluk = 200 },
+        };
+        var ok = FormPenceresi.Ac("Şoförden Para Al", m, alanlar, _ => servis.ParaAlAsync(m.SoforId!.Value, m.Tur, m.Tarih, m.Tutar, m.KasaId,
+            m.MusteriId, m.SeferId, m.AracId, m.Aciklama, m.PB, m.Kur));
+        if (ok) AnaPencere.Basarili("Kaydedildi.");
+        return ok;
+    }
+
+    private sealed class AtamaModel
+    {
+        public short? AracId { get; set; }
+        public DateOnly Tarih { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    }
+
+    public static async Task<bool> AracAtaAsync(SoforHesapServisi servis, Secimler s, short soforId, string ad)
+    {
+        var m = new AtamaModel();
+        var alanlar = new List<FormAlani>
+        {
+            new() { Etiket = "Araç", Yol = nameof(AtamaModel.AracId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.AraclarAsync() },
+            new() { Etiket = "Başlangıç tarihi", Yol = nameof(AtamaModel.Tarih), Tip = AlanTipi.Tarih, Zorunlu = true },
+        };
+        var ok = FormPenceresi.Ac($"Araca Ata — {ad}", m, alanlar, _ => servis.AracAtaAsync(soforId, m.AracId!.Value, m.Tarih));
+        if (ok) AnaPencere.Basarili("Atama yapıldı; önceki atama kapatıldı.");
+        return ok;
+    }
+
+    public static async Task<bool> ZimmetAsync(Secimler s, Zimmet? z = null, short? soforId = null, short? aracId = null)
+    {
+        var yeni = z is null;
+        z ??= new Zimmet { SoforId = soforId, AracId = aracId, VerilisTarihi = DateOnly.FromDateTime(DateTime.Today) };
+        var alanlar = new List<FormAlani>
+        {
+            FormAlani.EnumSecim<ZimmetTuru>("Tür", nameof(Zimmet.Tur)),
+            new() { Etiket = "Ad / tanım", Yol = nameof(Zimmet.Ad), Zorunlu = true, MaksUzunluk = 100, Ipucu = "Ör. Shell taşıt kartı, HGS etiketi, telefon" },
+            new() { Etiket = "Seri / kart no", Yol = nameof(Zimmet.SeriNo), MaksUzunluk = 40 },
+            new() { Etiket = "Şoför", Yol = nameof(Zimmet.SoforId), Tip = AlanTipi.Secim, Secenekler = await s.SoforlerAsync() },
+            new() { Etiket = "Araç", Yol = nameof(Zimmet.AracId), Tip = AlanTipi.Secim, Secenekler = await s.AraclarAsync() },
+            new() { Etiket = "Veriliş tarihi", Yol = nameof(Zimmet.VerilisTarihi), Tip = AlanTipi.Tarih, Zorunlu = true },
+            new() { Etiket = "Değer (TL)", Yol = nameof(Zimmet.Deger), Tip = AlanTipi.Para },
+            new() { Etiket = "Açıklama", Yol = nameof(Zimmet.Aciklama), MaksUzunluk = 200 },
+        };
+        var servis = App.Al<IKayitServisi<Zimmet>>();
+        var ok = FormPenceresi.Ac(yeni ? "Zimmet Ver" : "Zimmet Düzenle", z, alanlar, async _ =>
+        {
+            if (z.SoforId is null && z.AracId is null) throw new DomainException("Şoför veya araçtan en az biri seçilmelidir.");
+            await servis.KaydetAsync(z);
+        });
+        if (ok) AnaPencere.Basarili("Zimmet kaydedildi.");
+        return ok;
+    }
+
+    private sealed class ZimmetKapatModel
+    {
+        public DateOnly Tarih { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public ZimmetDurum Durum { get; set; } = ZimmetDurum.IadeEdildi;
+        public string? Aciklama { get; set; }
+    }
+
+    public static async Task<bool> ZimmetKapatAsync(SoforHesapServisi servis, ZimmetSatir z)
+    {
+        if (z.Durum != ZimmetDurum.Zimmette) { await Dialog.Bilgi("Bu zimmet zaten kapatılmış."); return false; }
+        var m = new ZimmetKapatModel();
+        var alanlar = new List<FormAlani>
+        {
+            new() { Etiket = "Tarih", Yol = nameof(ZimmetKapatModel.Tarih), Tip = AlanTipi.Tarih, Zorunlu = true },
+            new() { Etiket = "Sonuç", Yol = nameof(ZimmetKapatModel.Durum), Tip = AlanTipi.Secim, Zorunlu = true,
+                    Secenekler = EnumMetin.Liste<ZimmetDurum>().Where(x => x.Deger != ZimmetDurum.Zimmette).ToList() },
+            new() { Etiket = "Açıklama", Yol = nameof(ZimmetKapatModel.Aciklama), MaksUzunluk = 100 },
+        };
+        return FormPenceresi.Ac($"Zimmet İade — {z.Ad}", m, alanlar, _ => servis.ZimmetKapatAsync(z.Id, m.Tarih, m.Durum, m.Aciklama));
+    }
+
+    private sealed class TahakkukModel
+    {
+        public short? SoforId { get; set; }
+        public DateOnly Donem { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public TahakkukTuru Tur { get; set; } = TahakkukTuru.Ek;
+        public decimal Tutar { get; set; }
+        public int? SeferId { get; set; }
+        public string? Aciklama { get; set; }
+    }
+
+    /// <summary>Elle hakediş satırı: ek ödeme (prim, ikramiye) veya kesinti (ceza, hasar, avans kesintisi).</summary>
+    public static async Task<bool> TahakkukAsync(SoforHesapServisi servis, Secimler s, short? soforId = null, TahakkukTuru tur = TahakkukTuru.Ek)
+    {
+        var m = new TahakkukModel { SoforId = soforId, Tur = tur };
+        var alanlar = new List<FormAlani>
+        {
+            new() { Etiket = "Şoför", Yol = nameof(TahakkukModel.SoforId), Tip = AlanTipi.Secim, Zorunlu = true, Secenekler = await s.SoforlerAsync() },
+            new() { Etiket = "Dönem (ayın herhangi bir günü)", Yol = nameof(TahakkukModel.Donem), Tip = AlanTipi.Tarih, Zorunlu = true },
+            FormAlani.EnumSecim<TahakkukTuru>("Tür", nameof(TahakkukModel.Tur)),
+            new() { Etiket = "Tutar (TL)", Yol = nameof(TahakkukModel.Tutar), Tip = AlanTipi.Para, Zorunlu = true },
+            new() { Etiket = "Sefer", Yol = nameof(TahakkukModel.SeferId), Tip = AlanTipi.Secim, Secenekler = await s.SeferlerAsync() },
+            new() { Etiket = "Açıklama", Yol = nameof(TahakkukModel.Aciklama), Zorunlu = true, MaksUzunluk = 200 },
+        };
+        var ok = FormPenceresi.Ac("Hakediş — Ek / Kesinti", m, alanlar, _ => servis.TahakkukYazAsync(m.Donem.Year * 100 + m.Donem.Month,
+            [new PersonelTahakkuk { SoforId = m.SoforId!.Value, Tur = m.Tur, Tutar = m.Tutar, SeferId = m.SeferId, Aciklama = m.Aciklama, Tarih = m.Donem }]));
+        if (ok) AnaPencere.Basarili("Hakediş satırı yazıldı.");
         return ok;
     }
 
