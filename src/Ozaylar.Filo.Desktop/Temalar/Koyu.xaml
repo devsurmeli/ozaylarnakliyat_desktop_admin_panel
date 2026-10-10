@@ -13,19 +13,41 @@
     <SolidColorBrush x:Key="VurguSecim" Color="#4A2A12" />
     <SolidColorBrush x:Key="TabloBaslikZemin" Color="#25201C" />
     <SolidColorBrush x:Key="TabloCizgi" Color="#2B2622" />
-    <SolidColorBrush x:Key="IkonZemin" Color="#3A2414" />
+    <LinearGradientBrush x:Key="IkonZemin" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#3D2615" Offset="0" />
+        <GradientStop Color="#5C3214" Offset="1" />
+    </LinearGradientBrush>
     <SolidColorBrush x:Key="YesilZemin" Color="#14321F" />
     <SolidColorBrush x:Key="YesilMetin" Color="#4ADE80" />
     <SolidColorBrush x:Key="KirmiziZemin" Color="#3B1515" />
     <SolidColorBrush x:Key="KirmiziMetin" Color="#F87171" />
     <SolidColorBrush x:Key="MaviZemin" Color="#0C2A3A" />
-    <LinearGradientBrush x:Key="HeroGradyan" StartPoint="0,0" EndPoint="1,1">
+    <LinearGradientBrush x:Key="HeroGradyan" StartPoint="0,0.15" EndPoint="1,0.85">
+        <GradientStop Color="#F97316" Offset="0" />
+        <GradientStop Color="#EA580C" Offset="0.3" />
+        <GradientStop Color="#C2410C" Offset="0.6" />
+        <GradientStop Color="#8A2E0E" Offset="0.85" />
+        <GradientStop Color="#5A1E08" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="MenuGradyan" StartPoint="0.2,0" EndPoint="0.8,1">
         <GradientStop Color="#EA580C" Offset="0" />
-        <GradientStop Color="#C2410C" Offset="0.5" />
-        <GradientStop Color="#7C2D12" Offset="1" />
+        <GradientStop Color="#C2410C" Offset="0.3" />
+        <GradientStop Color="#9A3412" Offset="0.6" />
+        <GradientStop Color="#5E220B" Offset="0.85" />
+        <GradientStop Color="#2E1206" Offset="1" />
     </LinearGradientBrush>
     <LinearGradientBrush x:Key="MarkaGradyan" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#FB923C" Offset="0" />
         <GradientStop Color="#C2410C" Offset="1" />
     </LinearGradientBrush>
+    <!-- Yumuşak ışık parlaması (degrade yüzeylerin üstüne) -->
+    <RadialGradientBrush x:Key="Parilti" GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#55FFFFFF" Offset="0" />
+        <GradientStop Color="#18FFFFFF" Offset="0.55" />
+        <GradientStop Color="#00FFFFFF" Offset="1" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="SicakParilti" GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#66FFD27A" Offset="0" />
+        <GradientStop Color="#00FFD27A" Offset="1" />
+    </RadialGradientBrush>
 </ResourceDictionary>

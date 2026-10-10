@@ -2,113 +2,33 @@
                  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-                 xmlns:s="clr-namespace:Ozaylar.Filo.Desktop.Sayfalar"
+                 xmlns:k="clr-namespace:Ozaylar.Filo.Desktop.Kontroller"
                  Title="Ozaylar Filo" Width="1400" Height="860" MinWidth="1000" MinHeight="600"
                  WindowStartupLocation="CenterScreen" WindowState="Maximized"
                  ExtendsContentIntoTitleBar="True" WindowBackdropType="None" Background="{DynamicResource Zemin}">
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <ui:TitleBar x:Name="Baslik" Title="Ozaylar Filo" Grid.Row="0">
-            <ui:TitleBar.Icon>
-                <ui:SymbolIcon Symbol="VehicleTruckProfile24" />
-            </ui:TitleBar.Icon>
-        </ui:TitleBar>
+        <!-- Turuncu degrade yan menü -->
+        <k:YanMenu x:Name="YanMenu" Grid.Column="0" Panel.ZIndex="1" />
 
-        <ui:NavigationView x:Name="Menu" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
-                           OpenPaneLength="252" IsPaneToggleVisible="True" Padding="18,6,0,0"
-                           Transition="FadeInWithSlide" TransitionDuration="220">
-            <ui:NavigationView.PaneHeader>
-                <StackPanel Orientation="Horizontal" Margin="12,0,0,16">
-                    <Border Width="42" Height="42" CornerRadius="13" Background="{DynamicResource MarkaGradyan}">
-                        <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.35" Color="#EA580C" /></Border.Effect>
-                        <ui:SymbolIcon Symbol="VehicleTruckProfile24" FontSize="23" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="OZAYLAR" FontWeight="Black" FontSize="17" />
-                        <TextBlock Text="Filo Yönetim Sistemi" FontSize="11" Foreground="{DynamicResource MetinIkincil}" />
-                    </StackPanel>
-                </StackPanel>
-            </ui:NavigationView.PaneHeader>
-            <ui:NavigationView.PaneFooter>
-                <Border Margin="10,6,10,10" Padding="10,8" CornerRadius="12" Background="{DynamicResource VurguAcik}">
-                    <StackPanel Orientation="Horizontal">
-                        <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource MarkaGradyan}">
-                            <TextBlock x:Name="BasHarf" Foreground="White" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock x:Name="KullaniciAd" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis" MaxWidth="170" />
-                            <TextBlock Text="Oturum açık" FontSize="11" Foreground="{DynamicResource MetinIkincil}" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </ui:NavigationView.PaneFooter>
-            <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem Content="Panel" TargetPageType="{x:Type s:PanelSayfasi}" Icon="{ui:SymbolIcon Home24}" />
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-                <ui:NavigationViewItem Content="Operasyon" Icon="{ui:SymbolIcon VehicleTruckProfile24}">
-                    <ui:NavigationViewItem.MenuItems>
-                        <ui:NavigationViewItem Content="Seferler" TargetPageType="{x:Type s:SeferlerSayfasi}" Tag="Sefer.Gor" />
-                        <ui:NavigationViewItem Content="Masraflar" TargetPageType="{x:Type s:MasraflarSayfasi}" Tag="Gider.Gor" />
-                        <ui:NavigationViewItem Content="Yakıt" TargetPageType="{x:Type s:YakitSayfasi}" Tag="Gider.Gor" />
-                        <ui:NavigationViewItem Content="HGS / OGS Geçişleri" TargetPageType="{x:Type s:HgsSayfasi}" Tag="Gider.Gor" />
-                        <ui:NavigationViewItem Content="Trafik Cezaları" TargetPageType="{x:Type s:CezalarSayfasi}" Tag="Gider.Gor" />
-                        <ui:NavigationViewItem Content="Ekstre Aktarımı" TargetPageType="{x:Type s:IceAktarmaSayfasi}" Tag="Gider.IceAktar" />
-                    </ui:NavigationViewItem.MenuItems>
-                </ui:NavigationViewItem>
+            <ui:TitleBar x:Name="Baslik" Title="" Grid.Row="0" />
 
-                <ui:NavigationViewItem Content="Şoförler" Icon="{ui:SymbolIcon PeopleTeam24}">
-                    <ui:NavigationViewItem.MenuItems>
-                        <ui:NavigationViewItem Content="Şoför Listesi" TargetPageType="{x:Type s:SoforlerSayfasi}" Tag="Filo.Gor" />
-                        <ui:NavigationViewItem Content="Şoför Kasası (Günlük)" TargetPageType="{x:Type s:SoforGunlukSayfasi}" Tag="SoforHesap.Gor" />
-                        <ui:NavigationViewItem Content="Onay ve Mahsup" TargetPageType="{x:Type s:SoforHesapSayfasi}" Tag="SoforHesap.Gor" />
-                        <ui:NavigationViewItem Content="Mahsup Geçmişi" TargetPageType="{x:Type s:MahsuplarSayfasi}" Tag="SoforHesap.Gor" />
-                        <ui:NavigationViewItem Content="Hakediş (Maaş / Prim)" TargetPageType="{x:Type s:HakedisSayfasi}" Tag="SoforHesap.Gor" />
-                        <ui:NavigationViewItem Content="Zimmetler" TargetPageType="{x:Type s:ZimmetlerSayfasi}" Tag="SoforHesap.Gor" />
-                    </ui:NavigationViewItem.MenuItems>
-                </ui:NavigationViewItem>
+            <!-- Sayfa çerçevesi: menü paneli gizli, gezinme YanMenu üzerinden -->
+            <ui:NavigationView x:Name="Menu" Grid.Row="1" IsPaneVisible="False" IsBackButtonVisible="Collapsed" IsPaneToggleVisible="False"
+                               PaneDisplayMode="Left" OpenPaneLength="0" CompactPaneLength="0" FrameMargin="0" IsFooterSeparatorVisible="False" IsTopSeparatorVisible="False"
+                               Padding="18,0,0,0" Transition="FadeInWithSlide" TransitionDuration="220" />
 
-                <ui:NavigationViewItem Content="Finans" Icon="{ui:SymbolIcon Money24}">
-                    <ui:NavigationViewItem.MenuItems>
-                        <ui:NavigationViewItem Content="Cariler" TargetPageType="{x:Type s:CarilerSayfasi}" Tag="Finans.Gor" />
-                        <ui:NavigationViewItem Content="Kasa / Banka" TargetPageType="{x:Type s:KasaSayfasi}" Tag="Finans.Gor" />
-                        <ui:NavigationViewItem Content="Faturalar" TargetPageType="{x:Type s:FaturalarSayfasi}" Tag="Finans.Gor" />
-                        <ui:NavigationViewItem Content="Çek / Senet" TargetPageType="{x:Type s:CekSenetSayfasi}" Tag="Finans.Gor" />
-                    </ui:NavigationViewItem.MenuItems>
-                </ui:NavigationViewItem>
-
-                <ui:NavigationViewItem Content="Kredi / Leasing" Icon="{ui:SymbolIcon BuildingBank24}">
-                    <ui:NavigationViewItem.MenuItems>
-                        <ui:NavigationViewItem Content="Finansman Özeti" TargetPageType="{x:Type s:KrediOzetSayfasi}" Tag="Finansman.Gor" />
-                        <ui:NavigationViewItem Content="Krediler" TargetPageType="{x:Type s:KredilerSayfasi}" Tag="Finansman.Gor" />
-                        <ui:NavigationViewItem Content="Taksit Takvimi" TargetPageType="{x:Type s:TaksitlerSayfasi}" Tag="Finansman.Gor" />
-                    </ui:NavigationViewItem.MenuItems>
-                </ui:NavigationViewItem>
-
-                <ui:NavigationViewItem Content="Filo" Icon="{ui:SymbolIcon VehicleCar24}">
-                    <ui:NavigationViewItem.MenuItems>
-                        <ui:NavigationViewItem Content="Araçlar" TargetPageType="{x:Type s:AraclarSayfasi}" Tag="Filo.Gor" />
-                        <ui:NavigationViewItem Content="Dorseler" TargetPageType="{x:Type s:DorselerSayfasi}" Tag="Filo.Gor" />
-                        <ui:NavigationViewItem Content="Evraklar / Muayene" TargetPageType="{x:Type s:EvraklarSayfasi}" Tag="Bakim.Gor" />
-                        <ui:NavigationViewItem Content="Bakım / Onarım" TargetPageType="{x:Type s:BakimlarSayfasi}" Tag="Bakim.Gor" />
-                        <ui:NavigationViewItem Content="Bakım Planları" TargetPageType="{x:Type s:BakimPlanlariSayfasi}" Tag="Bakim.Gor" />
-                        <ui:NavigationViewItem Content="Lastikler" TargetPageType="{x:Type s:LastiklerSayfasi}" Tag="Bakim.Gor" />
-                    </ui:NavigationViewItem.MenuItems>
-                </ui:NavigationViewItem>
-
-                <ui:NavigationViewItem Content="Raporlar" TargetPageType="{x:Type s:RaporlarSayfasi}" Icon="{ui:SymbolIcon DataBarVertical24}" Tag="Rapor.Operasyon|Rapor.Finans" />
-            </ui:NavigationView.MenuItems>
-
-            <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem x:Name="UyariOgesi" Content="Uyarılar" Icon="{ui:SymbolIcon Alert24}" Click="UyariOgesi_Click" />
-                <ui:NavigationViewItem x:Name="TemaOgesi" Content="Koyu tema" Icon="{ui:SymbolIcon WeatherMoon24}" Click="TemaOgesi_Click" />
-                <ui:NavigationViewItem Content="Ayarlar" TargetPageType="{x:Type s:AyarlarMerkeziSayfasi}" Icon="{ui:SymbolIcon Settings24}" />
-            </ui:NavigationView.FooterMenuItems>
-        </ui:NavigationView>
-
-        <ui:SnackbarPresenter x:Name="Bildirim" Grid.Row="1" VerticalAlignment="Bottom" />
+            <ui:SnackbarPresenter x:Name="Bildirim" Grid.Row="1" VerticalAlignment="Bottom" />
+        </Grid>
     </Grid>
 </ui:FluentWindow>

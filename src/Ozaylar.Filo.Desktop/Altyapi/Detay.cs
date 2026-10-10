@@ -155,6 +155,7 @@ public static class Gezgin
 
     public static event Action? Degisti;
     public static bool GeriVar => _gecmis.Count > 0;
+    public static Type? MevcutSayfa => _mevcut?.Tip;
 
     public static void Bagla(NavigationView nav)
     {

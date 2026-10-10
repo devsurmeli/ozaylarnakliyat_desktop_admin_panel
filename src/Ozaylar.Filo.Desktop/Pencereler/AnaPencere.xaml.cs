@@ -14,24 +14,29 @@ public partial class AnaPencere : FluentWindow
 {
     private static ISnackbarService? _bildirim;
     private readonly PanelVM _panel;
+    private readonly IKullaniciOturumu _oturum;
+    private MenuOgesi _uyariOgesi = null!;
+    private MenuOgesi _temaOgesi = null!;
 
     public AnaPencere(IServiceProvider servisler, IKullaniciOturumu oturum, ISnackbarService snackbar, PanelVM panel)
     {
         InitializeComponent();
         Grafik.Ayarla();
         _panel = panel;
-        Baslik.Title = $"Ozaylar Filo  —  {oturum.AdSoyad}";
+        _oturum = oturum;
+        Title = $"Ozaylar Filo — {oturum.AdSoyad}";
         Menu.SetServiceProvider(servisler);
         Gezgin.Bagla(Menu);
         snackbar.SetSnackbarPresenter(Bildirim);
         _bildirim = snackbar;
-        YetkiyeGoreGizle(Menu.MenuItems, oturum);
-        YetkiyeGoreGizle(Menu.FooterMenuItems, oturum);
+
+        MenuOlustur();
+        YanMenu.Kullanici(oturum.AdSoyad, (string)BasHarfDonusturucu.Ornek.Convert(oturum.AdSoyad, typeof(string), null, Kultur.Tr));
+        YanMenu.SayfaIstendi += o => Menu.Navigate(o.Sayfa!);
+        Gezgin.Degisti += () => YanMenu.SayfaDegisti(Gezgin.MevcutSayfa);
         panel.UyarilarDegisti += UyariRozeti;
-        KullaniciAd.Text = oturum.AdSoyad;
-        BasHarf.Text = (string)BasHarfDonusturucu.Ornek.Convert(oturum.AdSoyad, typeof(string), null, Kultur.Tr);
-        TemaOgesiGuncelle();
         Tema.Degisti += TemaOgesiGuncelle;
+        TemaOgesiGuncelle();
 
         // Geri: Alt+Sol veya fare geri tuşu
         PreviewKeyDown += (_, e) =>
@@ -45,41 +50,74 @@ public partial class AnaPencere : FluentWindow
         Loaded += (_, _) => Menu.Navigate(typeof(PanelSayfasi));
     }
 
-    private void UyariRozeti(int kritik, int toplam)
+    /// <summary>Menü yapısı; yetkisi olmayan sayfalar ve boş kalan gruplar gösterilmez.</summary>
+    private void MenuOlustur()
     {
-        UyariOgesi.Content = toplam == 0 ? "Uyarılar" : $"Uyarılar ({toplam})";
-        var ikon = new SymbolIcon(toplam == 0 ? SymbolRegular.Alert24 : SymbolRegular.AlertUrgent24);
-        if (kritik > 0) ikon.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC4, 0x2B, 0x1C));
-        UyariOgesi.Icon = ikon;
+        MenuOgesi? S(string baslik, Type sayfa, params string[] izinler) =>
+            izinler.Length == 0 || izinler.Any(_oturum.Yetkili) ? new MenuOgesi(baslik, SymbolRegular.Circle24, sayfa) : null;
+        void G(string baslik, SymbolRegular ikon, params MenuOgesi?[] alt)
+        {
+            var gorunen = alt.OfType<MenuOgesi>().ToArray();
+            if (gorunen.Length > 0) YanMenu.Ogeler.Add(new MenuOgesi(baslik, ikon, null, gorunen));
+        }
+
+        YanMenu.Ogeler.Add(new MenuOgesi("Panel", SymbolRegular.Home24, typeof(PanelSayfasi)));
+        G("Operasyon", SymbolRegular.VehicleTruckProfile24,
+            S("Seferler", typeof(SeferlerSayfasi), Izinler.SeferGor),
+            S("Masraflar", typeof(MasraflarSayfasi), Izinler.GiderGor),
+            S("Yakıt", typeof(YakitSayfasi), Izinler.GiderGor),
+            S("HGS / OGS Geçişleri", typeof(HgsSayfasi), Izinler.GiderGor),
+            S("Trafik Cezaları", typeof(CezalarSayfasi), Izinler.GiderGor),
+            S("Ekstre Aktarımı", typeof(IceAktarmaSayfasi), Izinler.IceAktar));
+        G("Şoförler", SymbolRegular.PeopleTeam24,
+            S("Şoför Listesi", typeof(SoforlerSayfasi), Izinler.FiloGor),
+            S("Şoför Kasası (Günlük)", typeof(SoforGunlukSayfasi), Izinler.SoforHesapGor),
+            S("Onay ve Mahsup", typeof(SoforHesapSayfasi), Izinler.SoforHesapGor),
+            S("Mahsup Geçmişi", typeof(MahsuplarSayfasi), Izinler.SoforHesapGor),
+            S("Hakediş (Maaş / Prim)", typeof(HakedisSayfasi), Izinler.SoforHesapGor),
+            S("Zimmetler", typeof(ZimmetlerSayfasi), Izinler.SoforHesapGor));
+        G("Finans", SymbolRegular.Wallet24,
+            S("Cariler", typeof(CarilerSayfasi), Izinler.FinansGor),
+            S("Kasa / Banka", typeof(KasaSayfasi), Izinler.FinansGor),
+            S("Faturalar", typeof(FaturalarSayfasi), Izinler.FinansGor),
+            S("Çek / Senet", typeof(CekSenetSayfasi), Izinler.FinansGor));
+        G("Kredi / Leasing", SymbolRegular.BuildingBank24,
+            S("Finansman Özeti", typeof(KrediOzetSayfasi), Izinler.FinansmanGor),
+            S("Krediler", typeof(KredilerSayfasi), Izinler.FinansmanGor),
+            S("Taksit Takvimi", typeof(TaksitlerSayfasi), Izinler.FinansmanGor));
+        G("Filo", SymbolRegular.VehicleCar24,
+            S("Araçlar", typeof(AraclarSayfasi), Izinler.FiloGor),
+            S("Dorseler", typeof(DorselerSayfasi), Izinler.FiloGor),
+            S("Evraklar / Muayene", typeof(EvraklarSayfasi), Izinler.BakimGor),
+            S("Bakım / Onarım", typeof(BakimlarSayfasi), Izinler.BakimGor),
+            S("Bakım Planları", typeof(BakimPlanlariSayfasi), Izinler.BakimGor),
+            S("Lastikler", typeof(LastiklerSayfasi), Izinler.BakimGor));
+        if (_oturum.Yetkili(Izinler.RaporOperasyon) || _oturum.Yetkili(Izinler.RaporFinans))
+            YanMenu.Ogeler.Add(new MenuOgesi("Raporlar", SymbolRegular.DataBarVertical24, typeof(RaporlarSayfasi)));
+
+        _uyariOgesi = new MenuOgesi("Uyarılar", SymbolRegular.Alert24)
+        {
+            Tikla = () =>
+            {
+                Menu.Navigate(typeof(PanelSayfasi));
+                _panel.UyarilariGoster();
+            },
+        };
+        _temaOgesi = new MenuOgesi("Koyu tema", SymbolRegular.WeatherMoon24) { Tikla = Tema.Degistir };
+        YanMenu.AltOgeler.Add(_uyariOgesi);
+        YanMenu.AltOgeler.Add(_temaOgesi);
+        YanMenu.AltOgeler.Add(new MenuOgesi("Ayarlar", SymbolRegular.Settings24, typeof(AyarlarMerkeziSayfasi)));
     }
 
-    private void TemaOgesi_Click(object sender, RoutedEventArgs e) => Tema.Degistir();
+    private void UyariRozeti(int kritik, int toplam) => _uyariOgesi.Rozet = toplam == 0 ? null : toplam.ToString();
 
     private void TemaOgesiGuncelle()
     {
-        TemaOgesi.Content = Tema.Koyu ? "Açık tema" : "Koyu tema";
-        TemaOgesi.Icon = new SymbolIcon(Tema.Koyu ? SymbolRegular.WeatherSunny24 : SymbolRegular.WeatherMoon24);
-    }
-
-    private void UyariOgesi_Click(object sender, RoutedEventArgs e)
-    {
-        Menu.Navigate(typeof(PanelSayfasi));
-        _panel.UyarilariGoster();
-    }
-
-    /// <summary>Tag'de izin kodu olan menü öğelerini (| ile birden fazla, biri yeterli) yetkiye göre gizler; boş kalan grupları da gizler.</summary>
-    private static bool YetkiyeGoreGizle(System.Collections.IList ogeler, IKullaniciOturumu oturum)
-    {
-        var gorunurVar = false;
-        foreach (var o in ogeler.OfType<NavigationViewItem>())
-        {
-            bool gorunur;
-            if (o.MenuItems.Count > 0) gorunur = YetkiyeGoreGizle(o.MenuItems, oturum);
-            else gorunur = o.Tag is not string izin || izin.Split('|').Any(oturum.Yetkili);
-            o.Visibility = gorunur ? Visibility.Visible : Visibility.Collapsed;
-            gorunurVar |= gorunur;
-        }
-        return gorunurVar;
+        // İkon değişimi için öğe yeniden oluşturulur (ikon salt okunur).
+        var yeni = new MenuOgesi(Tema.Koyu ? "Açık tema" : "Koyu tema", Tema.Koyu ? SymbolRegular.WeatherSunny24 : SymbolRegular.WeatherMoon24) { Tikla = Tema.Degistir };
+        var i = YanMenu.AltOgeler.IndexOf(_temaOgesi);
+        if (i >= 0) YanMenu.AltOgeler[i] = yeni;
+        _temaOgesi = yeni;
     }
 
     /// <summary>Kısa başarı bildirimi (sağ alt).</summary>

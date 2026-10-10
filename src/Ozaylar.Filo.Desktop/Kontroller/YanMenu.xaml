@@ -1,0 +1,216 @@
+<UserControl x:Class="Ozaylar.Filo.Desktop.Kontroller.YanMenu"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:alt="clr-namespace:Ozaylar.Filo.Desktop.Altyapi"
+             x:Name="Kok">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BV" />
+
+        <!-- Menü düğmesi: şeffaf, üzerine gelince cam efekti, basınca biraz daha belirgin -->
+        <Style x:Key="MenuDugme" TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="13" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#24FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#38FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DropShadowEffect x:Key="HapGolge" BlurRadius="16" ShadowDepth="4" Direction="270" Opacity="0.28" Color="#7C2D12" />
+
+        <!-- Alt menü satırı -->
+        <DataTemplate x:Key="AltSatir">
+            <Button Style="{StaticResource MenuDugme}" Click="Oge_Click" AutomationProperties.Name="{Binding Baslik}" Padding="0" Margin="0,1" ToolTip="{Binding Baslik}">
+                <Grid>
+                    <Border x:Name="Hap" CornerRadius="11" Background="White" Opacity="0" Effect="{StaticResource HapGolge}" />
+                    <DockPanel Margin="12,8,10,8">
+                        <Ellipse x:Name="Nokta" Width="6" Height="6" Fill="White" Opacity="0.55" Margin="0,0,11,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="Yazi" Text="{Binding Baslik}" FontSize="13" Foreground="White" Opacity="0.9" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Secili}" Value="True">
+                    <Setter TargetName="Hap" Property="Opacity" Value="1" />
+                    <Setter TargetName="Yazi" Property="Foreground" Value="#C2410C" />
+                    <Setter TargetName="Yazi" Property="Opacity" Value="1" />
+                    <Setter TargetName="Yazi" Property="FontWeight" Value="SemiBold" />
+                    <Setter TargetName="Nokta" Property="Fill" Value="#F97316" />
+                    <Setter TargetName="Nokta" Property="Opacity" Value="1" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Üst düzey menü satırı (grup veya sayfa) -->
+        <DataTemplate x:Key="UstSatir">
+            <StackPanel Margin="0,2" Visibility="{Binding Gorunur, Converter={StaticResource BV}}">
+                <Button Style="{StaticResource MenuDugme}" Click="Oge_Click" AutomationProperties.Name="{Binding Baslik}" Padding="0" ToolTip="{Binding Baslik}">
+                    <Grid>
+                        <Border x:Name="Hap" CornerRadius="13" Background="White" Opacity="0" Effect="{StaticResource HapGolge}" />
+                        <Border x:Name="GrupZemin" CornerRadius="13" Background="#1AFFFFFF" Visibility="Collapsed" />
+                        <DockPanel Margin="13,10,12,10">
+                            <Grid DockPanel.Dock="Left" Width="24" Height="24">
+                                <ui:SymbolIcon x:Name="Ikon" Symbol="{Binding Ikon}" FontSize="21" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Ellipse x:Name="RozetNokta" Width="9" Height="9" Fill="#FDE047" Stroke="#EA580C" StrokeThickness="1.5"
+                                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-3,0" Visibility="Collapsed" />
+                            </Grid>
+                            <ui:SymbolIcon x:Name="Ok" DockPanel.Dock="Right" Symbol="ChevronDown20" FontSize="14" Foreground="White" Opacity="0.75"
+                                           RenderTransformOrigin="0.5,0.5" Visibility="Collapsed">
+                            </ui:SymbolIcon>
+                            <Border x:Name="Rozet" DockPanel.Dock="Right" CornerRadius="9" Padding="7,1" Background="#FDE047" Margin="6,0,0,0" VerticalAlignment="Center"
+                                    Visibility="Collapsed">
+                                <TextBlock Text="{Binding Rozet}" FontSize="11" FontWeight="Bold" Foreground="#9A3412" />
+                            </Border>
+                            <TextBlock x:Name="Yazi" Text="{Binding Baslik}" FontSize="14" FontWeight="SemiBold" Foreground="White" Margin="13,0,0,0"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                    </Grid>
+                </Button>
+                <!-- Alt öğeler: ince dikey çizgiyle girintili -->
+                <Border x:Name="AltKutu" Margin="25,4,0,6" Padding="10,0,0,0" BorderBrush="#40FFFFFF" BorderThickness="1.5,0,0,0" Visibility="Collapsed">
+                    <ItemsControl ItemsSource="{Binding Alt}" ItemTemplate="{StaticResource AltSatir}" />
+                </Border>
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Grup}" Value="True">
+                    <Setter TargetName="Ok" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Acik}" Value="True" />
+                        <Condition Binding="{Binding Dar, ElementName=Kok}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="AltKutu" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="Ok" Property="RenderTransform"><Setter.Value><RotateTransform Angle="180" /></Setter.Value></Setter>
+                </MultiDataTrigger>
+                <DataTrigger Binding="{Binding AltSecili}" Value="True">
+                    <Setter TargetName="GrupZemin" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Secili}" Value="True">
+                    <Setter TargetName="Hap" Property="Opacity" Value="1" />
+                    <Setter TargetName="Yazi" Property="Foreground" Value="#C2410C" />
+                    <Setter TargetName="Ikon" Property="Foreground" Value="#EA580C" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding AltSecili}" Value="True" />
+                        <Condition Binding="{Binding Dar, ElementName=Kok}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="Hap" Property="Opacity" Value="1" />
+                    <Setter TargetName="Ikon" Property="Foreground" Value="#EA580C" />
+                </MultiDataTrigger>
+                <DataTrigger Binding="{Binding RozetVar}" Value="True">
+                    <Setter TargetName="Rozet" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="RozetNokta" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Dar, ElementName=Kok}" Value="True">
+                    <Setter TargetName="Yazi" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Ok" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Rozet" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- Degrade gövde -->
+        <Border x:Name="Govde" Width="268" CornerRadius="26" Margin="12,12,6,12" Background="{DynamicResource MenuGradyan}">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="34" ShadowDepth="10" Direction="300" Opacity="0.30" Color="#C2410C" />
+            </Border.Effect>
+            <Grid x:Name="Ic">
+                <!-- Işık katmanları: sıcak parlama, beyaz hale, silik kamyon -->
+                <Ellipse Width="420" Height="420" Fill="{DynamicResource SicakParilti}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-190,-210,0,0" IsHitTestVisible="False" />
+                <Ellipse Width="300" Height="300" Fill="{DynamicResource Parilti}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-190,40" IsHitTestVisible="False" />
+                <Ellipse Width="380" Height="380" Fill="{DynamicResource Parilti}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-200,0,0,-230" Opacity="0.7" IsHitTestVisible="False" />
+                <ui:SymbolIcon Symbol="VehicleTruckProfile24" FontSize="230" Foreground="White" Opacity="0.06" HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Margin="0,150,-70,0" IsHitTestVisible="False" />
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Marka -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="18,22,12,22">
+                        <Border Width="46" Height="46" CornerRadius="15" Background="White">
+                            <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="5" Direction="270" Opacity="0.30" Color="#7C2D12" /></Border.Effect>
+                            <ui:SymbolIcon Symbol="VehicleTruckProfile24" FontSize="25" Foreground="{DynamicResource HeroGradyan}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel x:Name="MarkaYazi" Margin="13,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="OZAYLAR" Foreground="White" FontWeight="Black" FontSize="19" />
+                            <TextBlock Text="FİLO YÖNETİM SİSTEMİ" Foreground="White" Opacity="0.78" FontSize="9.5" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Menü -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="12,0,12,0">
+                        <StackPanel>
+                            <TextBlock x:Name="MenuEtiket" Text="MENÜ" Foreground="White" Opacity="0.55" FontSize="10.5" FontWeight="Bold" Margin="14,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding Ogeler, ElementName=Kok}" ItemTemplate="{StaticResource UstSatir}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Alt bölüm: uyarılar, tema, ayarlar, kullanıcı -->
+                    <StackPanel Grid.Row="2" Margin="12,8,12,14">
+                        <Border Height="1" Background="#33FFFFFF" Margin="10,0,10,8" />
+                        <ItemsControl ItemsSource="{Binding AltOgeler, ElementName=Kok}" ItemTemplate="{StaticResource UstSatir}" />
+                        <Border x:Name="KullaniciKart" Margin="0,10,0,0" Padding="10" CornerRadius="17" Background="#26FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1">
+                            <DockPanel>
+                                <Border Width="38" Height="38" CornerRadius="19" Background="White">
+                                    <TextBlock x:Name="BasHarf" FontWeight="Black" FontSize="14" Foreground="{DynamicResource HeroGradyan}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel x:Name="KullaniciYazi" Margin="11,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="KullaniciAd" Foreground="White" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <Ellipse Width="7" Height="7" Fill="#4ADE80" VerticalAlignment="Center" />
+                                        <TextBlock Text="Çevrimiçi" Foreground="White" Opacity="0.8" FontSize="11" Margin="6,0,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Daralt / genişlet: gövde kenarına taşan yuvarlak düğme -->
+        <Button x:Name="DaraltBtn" Click="Daralt_Click" Width="28" Height="28" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,40,-8,0"
+                Cursor="Hand" ToolTip="Menüyü daralt / genişlet" FocusVisualStyle="{x:Null}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" CornerRadius="14" Background="White" BorderBrush="#FED7AA" BorderThickness="1">
+                        <Border.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.25" Color="#7C2D12" /></Border.Effect>
+                        <ui:SymbolIcon x:Name="DaraltIkon" Symbol="ChevronLeft20" FontSize="14" Foreground="#EA580C" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#FFF3E8" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding Dar, ElementName=Kok}" Value="True">
+                            <Setter TargetName="DaraltIkon" Property="Symbol" Value="ChevronRight20" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+    </Grid>
+</UserControl>
