@@ -1,0 +1,37 @@
+<Page x:Class="Ozaylar.Filo.Desktop.Sayfalar.AyarlarSayfasi"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:alt="clr-namespace:Ozaylar.Filo.Desktop.Altyapi"
+      Title="Ayarlar">
+    <StackPanel Margin="0,0,16,16" MaxWidth="900" HorizontalAlignment="Left">
+        <TextBlock Text="Ayarlar" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <ui:CardControl Header="Şifremi değiştir" Icon="{ui:SymbolIcon Key24}" Margin="0,0,0,8">
+            <ui:Button Content="Değiştir" Command="{Binding SifreCommand}" />
+        </ui:CardControl>
+
+        <ui:CardControl Header="Sistem ayarları ve dönem kilidi" Icon="{ui:SymbolIcon Settings24}" Margin="0,0,0,8"
+                        Visibility="{Binding Yonetici, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Kapanis}" VerticalAlignment="Center" Margin="0,0,12,0" Opacity="0.8" />
+                <ui:Button Content="Düzenle" Command="{Binding DuzenleCommand}" />
+            </StackPanel>
+        </ui:CardControl>
+
+        <ui:CardControl Header="Sunucu bağlantısı" Icon="{ui:SymbolIcon Server24}" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Sunucu}" VerticalAlignment="Center" Margin="0,0,12,0" Opacity="0.8" />
+                <ui:Button Content="Değiştir" Command="{Binding BaglantiCommand}" />
+            </StackPanel>
+        </ui:CardControl>
+
+        <ui:CardControl Header="Son başarılı otomatik yedek" Icon="{ui:SymbolIcon History24}" Margin="0,0,0,8">
+            <TextBlock Text="{Binding SonYedek}" VerticalAlignment="Center" />
+        </ui:CardControl>
+
+        <ui:CardControl Header="Program sürümü" Icon="{ui:SymbolIcon Info24}">
+            <TextBlock Text="{Binding Surum}" VerticalAlignment="Center" />
+        </ui:CardControl>
+    </StackPanel>
+</Page>

@@ -1,0 +1,30 @@
+<Page x:Class="Ozaylar.Filo.Desktop.Sayfalar.RaporlarSayfasi"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:alt="clr-namespace:Ozaylar.Filo.Desktop.Altyapi"
+      Title="Raporlar">
+    <Grid Margin="0,0,16,12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Text="Rapor" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <ComboBox ItemsSource="{Binding Raporlar}" SelectedItem="{Binding Secili}" Width="300" Margin="0,0,12,0" />
+            <TextBlock Text="Tarih" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <DatePicker SelectedDate="{Binding BasTarih}" Width="130" />
+            <TextBlock Text="–" VerticalAlignment="Center" Margin="6,0" />
+            <DatePicker SelectedDate="{Binding BitTarih}" Width="130" Margin="0,0,12,0" />
+            <ui:Button Content="Raporu oluştur" Icon="{ui:SymbolIcon DataBarVertical24}" Appearance="Primary" Command="{Binding CalistirCommand}" Margin="0,0,6,0" />
+            <ui:Button Content="Excel" Icon="{ui:SymbolIcon DocumentTable24}" Command="{Binding DisaCommand}" CommandParameter="excel" Margin="0,0,6,0" />
+            <ui:Button Content="PDF" Icon="{ui:SymbolIcon DocumentPdf24}" Command="{Binding DisaCommand}" CommandParameter="pdf" />
+        </WrapPanel>
+        <DataGrid x:Name="Tablo" Grid.Row="1" ItemsSource="{Binding Veri}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                  EnableRowVirtualization="True" />
+        <ui:ProgressRing Grid.Row="1" IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Visibility="{Binding Mesgul, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" />
+        <TextBlock Grid.Row="2" Text="{Binding Ozet}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="2,8,0,0" />
+    </Grid>
+</Page>

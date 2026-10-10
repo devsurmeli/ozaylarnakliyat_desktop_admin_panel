@@ -1,0 +1,97 @@
+<ui:FluentWindow x:Class="Ozaylar.Filo.Desktop.Pencereler.AnaPencere"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:s="clr-namespace:Ozaylar.Filo.Desktop.Sayfalar"
+                 Title="Ozaylar Filo" Width="1400" Height="860" MinWidth="1000" MinHeight="600"
+                 WindowStartupLocation="CenterScreen" WindowState="Maximized"
+                 ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar x:Name="Baslik" Title="Ozaylar Filo" Grid.Row="0">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="VehicleTruckProfile24" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <ui:NavigationView x:Name="Menu" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
+                           OpenPaneLength="250" IsPaneToggleVisible="True" Padding="16,8,0,0">
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="Panel" TargetPageType="{x:Type s:PanelSayfasi}" Icon="{ui:SymbolIcon Home24}" />
+
+                <ui:NavigationViewItem Content="Operasyon" Icon="{ui:SymbolIcon VehicleTruckProfile24}" IsExpanded="True">
+                    <ui:NavigationViewItem.MenuItems>
+                        <ui:NavigationViewItem Content="Seferler" TargetPageType="{x:Type s:SeferlerSayfasi}" Tag="Sefer.Gor" />
+                        <ui:NavigationViewItem Content="Masraflar" TargetPageType="{x:Type s:MasraflarSayfasi}" Tag="Gider.Gor" />
+                        <ui:NavigationViewItem Content="Yakıt" TargetPageType="{x:Type s:YakitSayfasi}" Tag="Gider.Gor" />
+                        <ui:NavigationViewItem Content="HGS / OGS Geçişleri" TargetPageType="{x:Type s:HgsSayfasi}" Tag="Gider.Gor" />
+                        <ui:NavigationViewItem Content="Trafik Cezaları" TargetPageType="{x:Type s:CezalarSayfasi}" Tag="Gider.Gor" />
+                        <ui:NavigationViewItem Content="Ekstre Aktarımı" TargetPageType="{x:Type s:IceAktarmaSayfasi}" Tag="Gider.IceAktar" />
+                    </ui:NavigationViewItem.MenuItems>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="Şoför Hesapları" Icon="{ui:SymbolIcon PeopleTeam24}">
+                    <ui:NavigationViewItem.MenuItems>
+                        <ui:NavigationViewItem Content="Avans / Harcırah / Mahsup" TargetPageType="{x:Type s:SoforHesapSayfasi}" Tag="SoforHesap.Gor" />
+                        <ui:NavigationViewItem Content="Avanslar" TargetPageType="{x:Type s:AvanslarSayfasi}" Tag="SoforHesap.Gor" />
+                        <ui:NavigationViewItem Content="Harcırahlar" TargetPageType="{x:Type s:HarcirahlarSayfasi}" Tag="SoforHesap.Gor" />
+                        <ui:NavigationViewItem Content="Mahsup Geçmişi" TargetPageType="{x:Type s:MahsuplarSayfasi}" Tag="SoforHesap.Gor" />
+                    </ui:NavigationViewItem.MenuItems>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="Finans" Icon="{ui:SymbolIcon Money24}">
+                    <ui:NavigationViewItem.MenuItems>
+                        <ui:NavigationViewItem Content="Cariler" TargetPageType="{x:Type s:CarilerSayfasi}" Tag="Finans.Gor" />
+                        <ui:NavigationViewItem Content="Kasa / Banka" TargetPageType="{x:Type s:KasaSayfasi}" Tag="Finans.Gor" />
+                        <ui:NavigationViewItem Content="Faturalar" TargetPageType="{x:Type s:FaturalarSayfasi}" Tag="Finans.Gor" />
+                        <ui:NavigationViewItem Content="Çek / Senet" TargetPageType="{x:Type s:CekSenetSayfasi}" Tag="Finans.Gor" />
+                        <ui:NavigationViewItem Content="Kredi / Leasing" TargetPageType="{x:Type s:FinansmanSayfasi}" Tag="Finansman.Gor" />
+                        <ui:NavigationViewItem Content="Taksit Takvimi" TargetPageType="{x:Type s:TaksitlerSayfasi}" Tag="Finansman.Gor" />
+                    </ui:NavigationViewItem.MenuItems>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="Filo" Icon="{ui:SymbolIcon VehicleCar24}">
+                    <ui:NavigationViewItem.MenuItems>
+                        <ui:NavigationViewItem Content="Araçlar" TargetPageType="{x:Type s:AraclarSayfasi}" Tag="Filo.Gor" />
+                        <ui:NavigationViewItem Content="Dorseler" TargetPageType="{x:Type s:DorselerSayfasi}" Tag="Filo.Gor" />
+                        <ui:NavigationViewItem Content="Şoförler" TargetPageType="{x:Type s:SoforlerSayfasi}" Tag="Filo.Gor" />
+                        <ui:NavigationViewItem Content="Evraklar / Muayene" TargetPageType="{x:Type s:EvraklarSayfasi}" Tag="Bakim.Gor" />
+                        <ui:NavigationViewItem Content="Bakım / Onarım" TargetPageType="{x:Type s:BakimlarSayfasi}" Tag="Bakim.Gor" />
+                        <ui:NavigationViewItem Content="Bakım Planları" TargetPageType="{x:Type s:BakimPlanlariSayfasi}" Tag="Bakim.Gor" />
+                        <ui:NavigationViewItem Content="Lastikler" TargetPageType="{x:Type s:LastiklerSayfasi}" Tag="Bakim.Gor" />
+                    </ui:NavigationViewItem.MenuItems>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="Raporlar" TargetPageType="{x:Type s:RaporlarSayfasi}" Icon="{ui:SymbolIcon DataBarVertical24}" Tag="Rapor.Operasyon|Rapor.Finans" />
+
+                <ui:NavigationViewItem Content="Tanımlar" Icon="{ui:SymbolIcon Toolbox24}">
+                    <ui:NavigationViewItem.MenuItems>
+                        <ui:NavigationViewItem Content="Lokasyonlar" TargetPageType="{x:Type s:LokasyonlarSayfasi}" Tag="Tanim.Gor" />
+                        <ui:NavigationViewItem Content="Güzergahlar" TargetPageType="{x:Type s:GuzergahlarSayfasi}" Tag="Tanim.Gor" />
+                        <ui:NavigationViewItem Content="Masraf Türleri" TargetPageType="{x:Type s:MasrafTurleriSayfasi}" Tag="Tanim.Gor" />
+                        <ui:NavigationViewItem Content="Evrak Türleri" TargetPageType="{x:Type s:EvrakTurleriSayfasi}" Tag="Tanim.Gor" />
+                        <ui:NavigationViewItem Content="Harcırah Tarifeleri" TargetPageType="{x:Type s:HarcirahTarifeleriSayfasi}" Tag="Tanim.Gor" />
+                        <ui:NavigationViewItem Content="Ekstre Şablonları" TargetPageType="{x:Type s:SablonlarSayfasi}" Tag="Gider.IceAktar" />
+                    </ui:NavigationViewItem.MenuItems>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.MenuItems>
+
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem Content="Yönetim" Icon="{ui:SymbolIcon Settings24}">
+                    <ui:NavigationViewItem.MenuItems>
+                        <ui:NavigationViewItem Content="Kullanıcılar" TargetPageType="{x:Type s:KullanicilarSayfasi}" Tag="Yonetim.Kullanici" />
+                        <ui:NavigationViewItem Content="Roller ve Yetkiler" TargetPageType="{x:Type s:RollerSayfasi}" Tag="Yonetim.Kullanici" />
+                        <ui:NavigationViewItem Content="Ayarlar" TargetPageType="{x:Type s:AyarlarSayfasi}" />
+                        <ui:NavigationViewItem Content="Denetim Kaydı" TargetPageType="{x:Type s:AuditSayfasi}" Tag="Yonetim.Audit" />
+                    </ui:NavigationViewItem.MenuItems>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.FooterMenuItems>
+        </ui:NavigationView>
+
+        <ui:SnackbarPresenter x:Name="Bildirim" Grid.Row="1" VerticalAlignment="Bottom" />
+    </Grid>
+</ui:FluentWindow>

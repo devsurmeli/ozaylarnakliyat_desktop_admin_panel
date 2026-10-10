@@ -1,0 +1,67 @@
+<Page x:Class="Ozaylar.Filo.Desktop.Sayfalar.SoforHesapSayfasi"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Şoför Hesapları">
+    <Grid Margin="0,0,16,12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="420" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Column="0">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding YenileCommand}" ToolTip="Yenile" />
+                <TextBlock Text="Şoför bakiyeleri" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock DockPanel.Dock="Bottom" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Text="Pozitif bakiye: şoförün elinde avans var. Negatif bakiye: şoföre ödeme yapılmalı." />
+            <DataGrid ItemsSource="{Binding Soforler}" SelectedItem="{Binding SeciliSofor}" AutoGenerateColumns="False" IsReadOnly="True"
+                      HeadersVisibility="Column" SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Şoför" Binding="{Binding AdSoyad}" MinWidth="160" />
+                    <DataGridTextColumn Header="Bakiye" Binding="{Binding Bakiye, StringFormat=N2}" Width="110">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right" /></Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Açık Avans" Binding="{Binding AcikAvans}" />
+                    <DataGridTextColumn Header="Onay Bek." Binding="{Binding OnayBekleyen}" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+
+        <DockPanel Grid.Column="2">
+            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <ui:Button Content="Avans Ver" Icon="{ui:SymbolIcon MoneyHand24}" Appearance="Primary" Command="{Binding AvansCommand}" Margin="0,0,6,6" />
+                <ui:Button Content="Harcama Gir" Icon="{ui:SymbolIcon ReceiptMoney24}" Command="{Binding HarcamaCommand}" Margin="0,0,6,6" />
+                <ui:Button Content="Harcırah Yaz" Icon="{ui:SymbolIcon CalendarClock24}" Command="{Binding HarcirahCommand}" Margin="0,0,6,6" />
+                <ui:Button Content="Seçili Harcamaları Onayla" Icon="{ui:SymbolIcon Checkmark24}" Command="{Binding OnaylaCommand}" Margin="0,0,6,6" />
+                <ui:Button Content="Mahsup Yap" Icon="{ui:SymbolIcon ArrowSwap24}" Appearance="Success" Command="{Binding MahsupCommand}" Margin="0,0,6,6" />
+                <ui:Button Content="Ekstre" Icon="{ui:SymbolIcon DocumentText24}" Command="{Binding EkstreCommand}" Margin="0,0,6,6" />
+            </WrapPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                <TextBlock Text="{Binding SeciliSofor.AdSoyad, StringFormat='{}{0} — açık kalemler'}" FontSize="16" FontWeight="SemiBold" />
+                <CheckBox Content="Tümünü seç" Margin="16,0,0,0" Command="{Binding TumunuSecCommand}"
+                          CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}" />
+            </StackPanel>
+            <ui:Card DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                <TextBlock Text="{Binding Onizleme}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            </ui:Card>
+            <DataGrid ItemsSource="{Binding Kalemler}" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <DataGridCheckBoxColumn Header="Seç" Binding="{Binding Secili, UpdateSourceTrigger=PropertyChanged}" />
+                    <DataGridTextColumn Header="Tür" Binding="{Binding Kalem.TurAd}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Tarih" Binding="{Binding Kalem.Tarih, StringFormat=dd.MM.yyyy}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Sefer" Binding="{Binding Kalem.SeferNo}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Açıklama" Binding="{Binding Kalem.Aciklama}" MinWidth="160" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Tutar" Binding="{Binding Kalem.Tutar, StringFormat=N2}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="PB" Binding="{Binding Kalem.PB}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="TL" Binding="{Binding Kalem.TutarTL, StringFormat=N2}" IsReadOnly="True" />
+                    <DataGridCheckBoxColumn Header="Onaylı" Binding="{Binding Kalem.Onayli, Mode=OneWay}" IsReadOnly="True" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Grid>
+</Page>

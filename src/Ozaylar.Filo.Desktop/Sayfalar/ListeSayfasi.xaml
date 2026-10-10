@@ -1,0 +1,68 @@
+<Page x:Class="Ozaylar.Filo.Desktop.Sayfalar.ListeSayfasi"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:alt="clr-namespace:Ozaylar.Filo.Desktop.Altyapi"
+      Title="{Binding Baslik}">
+    <Grid Margin="0,0,16,12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Araç çubuğu -->
+        <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+            <ui:Button Content="Yeni" Icon="{ui:SymbolIcon Add24}" Appearance="Primary" Command="{Binding YeniKomut}"
+                       Visibility="{Binding YeniVar, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,6,6" />
+            <ui:Button Content="Düzenle" Icon="{ui:SymbolIcon Edit24}" Command="{Binding DuzenleKomut}"
+                       Visibility="{Binding DuzenleVar, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,6,6" />
+            <ui:Button Content="{Binding SilMetni}" Icon="{ui:SymbolIcon Delete24}" Command="{Binding SilKomut}"
+                       Visibility="{Binding SilVar, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" Margin="0,0,6,6" />
+            <ItemsControl ItemsSource="{Binding Eylemler}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ui:Button Content="{Binding Metin}" Command="{Binding Komut}" Margin="0,0,6,6">
+                            <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="{Binding Ikon}" />
+                            </ui:Button.Icon>
+                        </ui:Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ui:Button Content="Yenile" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding YenileKomut}" Margin="0,0,6,6" />
+            <ui:Button Content="Excel" Icon="{ui:SymbolIcon DocumentTable24}" Command="{Binding ExcelKomut}" Margin="0,0,6,6" />
+            <ui:Button Content="PDF" Icon="{ui:SymbolIcon DocumentPdf24}" Command="{Binding PdfKomut}" Margin="0,0,6,6" />
+        </WrapPanel>
+
+        <!-- Filtreler -->
+        <DockPanel Grid.Row="1" Margin="0,0,0,8" LastChildFill="True">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left"
+                        Visibility="{Binding TarihFiltresi, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}">
+                <TextBlock Text="Tarih:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <DatePicker SelectedDate="{Binding BasTarih}" Width="130" />
+                <TextBlock Text="–" VerticalAlignment="Center" Margin="6,0" />
+                <DatePicker SelectedDate="{Binding BitTarih}" Width="130" Margin="0,0,12,0" />
+            </StackPanel>
+            <CheckBox DockPanel.Dock="Left" Content="{Binding OnayFiltreMetni}" IsChecked="{Binding OnayFiltre}" Margin="0,0,12,0"
+                      Visibility="{Binding OnayFiltreMetni, Converter={x:Static alt:NullGorunurlukDonusturucu.Ornek}}" />
+            <ui:TextBox PlaceholderText="Listede ara..." Icon="{ui:SymbolIcon Search24}"
+                        Text="{Binding Arama, UpdateSourceTrigger=PropertyChanged, Delay=250}" MaxWidth="420" HorizontalAlignment="Left" />
+        </DockPanel>
+
+        <DataGrid x:Name="Tablo" Grid.Row="2" ItemsSource="{Binding Gorunum}" SelectedItem="{Binding SeciliNesne}"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" CanUserAddRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" EnableRowVirtualization="True"
+                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                  MouseDoubleClick="Tablo_MouseDoubleClick" />
+
+        <ui:ProgressRing Grid.Row="2" IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Visibility="{Binding Mesgul, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" />
+
+        <TextBlock Grid.Row="3" Text="{Binding AltBilgi}" Margin="2,8,0,0" Opacity="0.8" />
+    </Grid>
+</Page>

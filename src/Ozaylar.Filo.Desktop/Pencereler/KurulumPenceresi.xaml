@@ -1,0 +1,41 @@
+<ui:FluentWindow x:Class="Ozaylar.Filo.Desktop.Pencereler.KurulumPenceresi"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="Sunucu Bağlantısı" Width="520" SizeToContent="Height" ResizeMode="NoResize"
+                 WindowStartupLocation="CenterScreen" ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica">
+    <StackPanel>
+        <ui:TitleBar Title="Ozaylar Filo — Sunucu Bağlantısı" ShowMaximize="False" ShowMinimize="False" />
+        <StackPanel Margin="24,8,24,24">
+            <TextBlock TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,12"
+                       Text="Programın kurulu olduğu sunucu bilgisayarın SQL Server adresini girin. Bu bilgiler sunucu kurulumunda üretilen 'istemci-baglanti-bilgisi.txt' dosyasındadır." />
+
+            <TextBlock Text="Sunucu adresi (ör. SUNUCU\SQLEXPRESS veya 192.168.1.10\SQLEXPRESS)" />
+            <ui:TextBox x:Name="Sunucu" Margin="0,4,0,10" />
+
+            <TextBlock Text="Veritabanı" />
+            <ui:TextBox x:Name="Veritabani" Text="OzaylarFilo" Margin="0,4,0,10" />
+
+            <CheckBox x:Name="Windows" Content="Windows kimlik doğrulaması kullan (etki alanı ağları için)" Margin="0,0,0,10"
+                      Checked="Windows_Degisti" Unchecked="Windows_Degisti" />
+
+            <StackPanel x:Name="SqlPanel">
+                <TextBlock Text="SQL kullanıcı adı" />
+                <ui:TextBox x:Name="Kullanici" Text="filo_app" Margin="0,4,0,10" />
+                <TextBlock Text="SQL şifresi" />
+                <ui:PasswordBox x:Name="Sifre" Margin="0,4,0,10" />
+            </StackPanel>
+
+            <TextBlock Text="Güncelleme klasörü (isteğe bağlı, ör. \\SUNUCU\OzaylarFiloGuncelleme)" />
+            <ui:TextBox x:Name="Guncelleme" Margin="0,4,0,12" />
+
+            <ui:InfoBar x:Name="Sonuc" IsClosable="False" Margin="0,0,0,12" Visibility="Collapsed" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button x:Name="TestBtn" Content="Bağlantıyı test et" Click="Test_Click" Margin="0,0,8,0" />
+                <ui:Button x:Name="KaydetBtn" Content="Kaydet ve devam et" Appearance="Primary" IsDefault="True" Click="Kaydet_Click" Margin="0,0,8,0" />
+                <ui:Button Content="Vazgeç" IsCancel="True" Click="Vazgec_Click" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</ui:FluentWindow>

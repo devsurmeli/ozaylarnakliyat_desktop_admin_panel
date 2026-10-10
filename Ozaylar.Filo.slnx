@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ozaylar.Filo.Application/Ozaylar.Filo.Application.csproj" />
+    <Project Path="src/Ozaylar.Filo.Desktop/Ozaylar.Filo.Desktop.csproj" />
+    <Project Path="src/Ozaylar.Filo.Domain/Ozaylar.Filo.Domain.csproj" />
+    <Project Path="src/Ozaylar.Filo.Infrastructure/Ozaylar.Filo.Infrastructure.csproj" />
+    <Project Path="src/Ozaylar.Filo.Sunucu/Ozaylar.Filo.Sunucu.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ozaylar.Filo.Application.Tests/Ozaylar.Filo.Application.Tests.csproj" />
+    <Project Path="tests/Ozaylar.Filo.Infrastructure.Tests/Ozaylar.Filo.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

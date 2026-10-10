@@ -1,0 +1,72 @@
+<Page x:Class="Ozaylar.Filo.Desktop.Sayfalar.IceAktarmaSayfasi"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:alt="clr-namespace:Ozaylar.Filo.Desktop.Altyapi"
+      Title="Ekstre Aktarımı">
+    <Grid Margin="0,0,16,12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="160" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,10"
+                   Text="Akaryakıt kartı (Opet, Shell, PO ...) veya HGS/OGS ekstresini Excel (.xlsx) ya da CSV olarak yükleyin. Kolon başlıkları 'Tanımlar > Ekstre Şablonları'ndaki eşlemeyle okunur. Araçlar plaka (veya HGS etiket no) ile eşleşir; kayıtlar ilgili seferlere otomatik bağlanır, daha önce aktarılmış satırlar atlanır." />
+
+        <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+            <TextBlock Text="Tür" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <ComboBox ItemsSource="{Binding Turler}" SelectedValuePath="Deger" DisplayMemberPath="Ad" SelectedValue="{Binding Tur}" Width="140" Margin="0,0,12,0" />
+            <TextBlock Text="Şablon" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <ComboBox ItemsSource="{Binding Sablonlar}" DisplayMemberPath="Ad" SelectedItem="{Binding Sablon}" Width="220" Margin="0,0,12,0" />
+            <ui:Button Content="Dosya seç ve önizle" Icon="{ui:SymbolIcon ArrowImport24}" Command="{Binding DosyaSecCommand}" Margin="0,0,12,0" />
+            <TextBlock Text="Ekstreyi gönderen cari" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <ComboBox ItemsSource="{Binding Cariler}" SelectedValuePath="Id" DisplayMemberPath="Ad" SelectedValue="{Binding CariId}" Width="240" IsEditable="True" Margin="0,0,12,0" />
+            <ui:Button Content="Aktar" Icon="{ui:SymbolIcon Checkmark24}" Appearance="Primary" Command="{Binding AktarCommand}" />
+        </WrapPanel>
+
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Satirlar}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Aktarilacak}" Value="False">
+                            <Setter Property="Opacity" Value="0.55" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Satır" Binding="{Binding SatirNo}" />
+                <DataGridTextColumn Header="Durum" Binding="{Binding Durum}" Width="200" />
+                <DataGridTextColumn Header="Plaka" Binding="{Binding Plaka}" />
+                <DataGridTextColumn Header="Zaman" Binding="{Binding Zaman, StringFormat='dd.MM.yyyy HH:mm'}" />
+                <DataGridTextColumn Header="Litre" Binding="{Binding Litre, StringFormat=N2}" />
+                <DataGridTextColumn Header="Birim Fiyat" Binding="{Binding BirimFiyat, StringFormat=N3}" />
+                <DataGridTextColumn Header="Tutar" Binding="{Binding Tutar, StringFormat=N2}" />
+                <DataGridTextColumn Header="Km" Binding="{Binding Km}" />
+                <DataGridTextColumn Header="Yer / Giriş" Binding="{Binding Yer}" MinWidth="160" />
+                <DataGridTextColumn Header="Çıkış" Binding="{Binding Yer2}" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <ui:ProgressRing Grid.Row="2" IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Visibility="{Binding Mesgul, Converter={x:Static alt:BoolGorunurlukDonusturucu.Ornek}}" />
+
+        <TextBlock Grid.Row="3" Text="{Binding Ozet}" FontWeight="SemiBold" Margin="0,8,0,8" />
+
+        <DockPanel Grid.Row="4">
+            <TextBlock DockPanel.Dock="Top" Text="Aktarım geçmişi" Style="{StaticResource BolumBaslik}" Margin="0,0,0,4" />
+            <DataGrid ItemsSource="{Binding Gecmis}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Tarih" Binding="{Binding OlusturmaTarihi, StringFormat='dd.MM.yyyy HH:mm'}" />
+                    <DataGridTextColumn Header="Tür" Binding="{Binding Tur, Converter={x:Static alt:EnumAdDonusturucu.Ornek}}" />
+                    <DataGridTextColumn Header="Dosya" Binding="{Binding DosyaAdi}" MinWidth="160" />
+                    <DataGridTextColumn Header="Toplam" Binding="{Binding ToplamSatir}" />
+                    <DataGridTextColumn Header="Aktarılan" Binding="{Binding BasariliSatir}" />
+                    <DataGridTextColumn Header="Atlanan" Binding="{Binding HataliSatir}" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Grid>
+</Page>

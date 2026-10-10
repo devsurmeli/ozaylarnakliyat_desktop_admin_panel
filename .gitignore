@@ -1,0 +1,11 @@
+﻿bin/
+obj/
+.vs/
+*.user
+TestResults/
+publish/
+Releases/
+artifacts/
+installer/prereq/
+*.bak
+*.ozyd
